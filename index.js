@@ -2,7 +2,7 @@ import fetch from 'node-fetch';
 import Indicators from 'technicalindicators';
 
 const MULTIPLIER = 2;
-const PERIOD = 150;
+const PERIOD = 250;
 const ATR_PERIOD = 10;
 const response = await fetch(
   'https://api.binance.com/api/v3/klines?' +
@@ -53,8 +53,8 @@ const band = ATR.map((atr, idx) => {
   trend1 = trend;
 
   return [
-    top1,
     bot1,
+    top1,
     trend,
     buySignal ? 'Buy' : '--',
     sellSignal ? 'Sell' : '--',
@@ -64,5 +64,5 @@ const crosses = Indicators.CrossDown.calculate({
   lineA: closes.slice(-(PERIOD - ATR_PERIOD)),
   lineB: band,
 });
-[...Array(140)].forEach((x, i) => console.log(i, ...band[i]));
+[...Array(PERIOD - ATR_PERIOD)].forEach((x, i) => console.log(i, ...band[i]));
 // console.log(src.slice(-20), downLine.slice(-20), crosses.slice(-20));
