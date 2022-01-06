@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { readFile } from 'fs/promises';
 import fetch from 'node-fetch';
 import chalk from 'chalk';
 import Indicators from 'technicalindicators';
@@ -24,10 +25,10 @@ const SYMBOLS = [
   'NEARUSDT',
 ];
 const RESOLUTIONS = [
-  { interval: '1d', seedPeriod: 60, lastDayCount: 1 },
-  { interval: '12h', seedPeriod: 120, lastDayCount: 2 },
-  { interval: '6h', seedPeriod: 240, lastDayCount: 4 },
-  { interval: '4h', seedPeriod: 360, lastDayCount: 6 },
+  { interval: '1d', seedPeriod: 60 },
+  { interval: '12h', seedPeriod: 120 },
+  { interval: '6h', seedPeriod: 240 },
+  { interval: '4h', seedPeriod: 360 },
 ];
 
 function writeData(data, flag, filename) {
@@ -74,6 +75,7 @@ async function seedSymbols(symbols, resolutions) {
     })
   );
 
+  // write ticker datetime checkpoints
   console.log(checkpoints);
   writeData(
     JSON.stringify(checkpoints).replace(/\\/g, ''),
@@ -82,28 +84,28 @@ async function seedSymbols(symbols, resolutions) {
   );
 }
 
-async function fetchLastDay(symbols, resolutions) {
-  await symbols.forEach((symbol) => {
-    resolutions.reduce(async (memo, resol) => {
-      await memo;
+async function fetchFromCheckpoint(symbols, resolutions) {
+  const checkpointsJson = await readFile(`./symbols/checkpoint.json`);
+  const checkpoints = JSON.parse(checkpointsJson);
+  console.log(checkpoints);
+  const nowUTC = Date.parse(new Date());
+  const H4 = 14400;
+  const H6 = 21600;
+  const H12 = 43200;
+  const D1 = 86400;
+  // await Promise.all(
+  //   symbols.map(async (symbol) => {
+  //     await resolutions.reduce(async (memo, resol) => {
+  //       await memo;
 
-      const { interval, lastDayCount } = resol;
+  //       const { interval, seedPeriod } = resol;
+  //       const data = await fetchData(symbol, interval, seedPeriod);
 
-      const data = await fetchData(symbol, interval, lastDayCount);
-
-      fs.readFile(
-        `./symbols/${symbol}_${interval}.json`,
-        'utf8',
-        (err, symbolFile) => {
-          if (err) {
-            console.error(err);
-            return;
-          }
-          JSON.parse(symbolFile.at(-1));
-        }
-      );
-    });
-  });
+  //       // write ticker data
+  //       writeData(data, 'w', `${symbol}_${interval}.json`);
+  //     }, undefined);
+  //   })
+  // );
 }
 
 async function SuperTrend(
@@ -162,8 +164,9 @@ async function SuperTrend(
   return band;
 }
 
-await seedSymbols(SYMBOLS, RESOLUTIONS);
+// await seedSymbols(SYMBOLS, RESOLUTIONS);
 
+await fetchFromCheckpoint();
 // const H12 = await SuperTrend('BTCUSDT', '12h', 250);
 
 // [...Array(250 - ATR_PERIOD)].forEach((x, i) => {
