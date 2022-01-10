@@ -1,5 +1,5 @@
-import fs from 'fs';
-import { readFile } from 'fs/promises';
+import fs, { constants } from 'fs';
+import { readFile, writeFile, access } from 'fs/promises';
 import fetch from 'node-fetch';
 import chalk from 'chalk';
 import Indicators from 'technicalindicators';
@@ -11,33 +11,50 @@ const SYMBOLS = [
   'BTCUSDT',
   'ETHUSDT',
   'SOLUSDT',
-  'AVAXUSDT',
-  'LUNAUSDT',
-  'DOTUSDT',
-  'MATICUSDT',
-  'ADAUSDT',
-  'ATOMUSDT',
-  'ONEUSDT',
-  'EGLDUSDT',
-  'LINKUSDT',
-  'FTMUSDT',
-  'ONEUSDT',
-  'NEARUSDT',
+  // 'AVAXUSDT',
+  // 'LUNAUSDT',
+  // 'DOTUSDT',
+  // 'MATICUSDT',
+  // 'ADAUSDT',
+  // 'ATOMUSDT',
+  // 'ONEUSDT',
+  // 'EGLDUSDT',
+  // 'LINKUSDT',
+  // 'FTMUSDT',
+  // 'ONEUSDT',
+  // 'NEARUSDT',
 ];
 const RESOLUTIONS = [
-  { interval: '1d', seedPeriod: 60 },
-  { interval: '12h', seedPeriod: 120 },
-  { interval: '6h', seedPeriod: 240 },
-  { interval: '4h', seedPeriod: 360 },
+  { interval: '1d', seedPeriod: 120 },
+  { interval: '12h', seedPeriod: 240 },
+  { interval: '6h', seedPeriod: 480 },
+  { interval: '4h', seedPeriod: 720 },
 ];
 
-function writeData(data, flag, filename) {
-  fs.writeFile(`./symbols/${filename}`, JSON.stringify(data), { flag }, (err) =>
-    err
-      ? console.error('error: ', JSON.stringify(err))
-      : console.log(`Complete writing ${filename}`)
-  );
+const mod = (a, n) => ((a % n) + n) % n;
+
+//
+//
+//
+async function writeJsonFile(data, flag, filename) {
+  try {
+    await writeFile(`./symbols/${filename}`, JSON.stringify(data), { flag });
+  } catch (err) {
+    console.error(`Error writing ./symbols/${filename}`);
+    throw err;
+  }
 }
+
+async function readJsonFile(filename) {
+  try {
+    const data = await readFile(`./symbols/${filename}`);
+    return data;
+  } catch (err) {
+    console.error(`Error reading ./symbols/${filename}`);
+    throw err;
+  }
+}
+
 async function fetchData(symbol, interval, limit) {
   const response = await fetch(
     'https://api.binance.com/api/v3/klines?' +
@@ -51,63 +68,150 @@ async function fetchData(symbol, interval, limit) {
   return await response.json();
 }
 
-// Run once in the beginning to seed the tickers
-async function seedSymbols(symbols, resolutions) {
+//
+// check integrity. All  symbol files have to be present in the checkpoint file
+//
+async function checkIntegrity() {}
+
+//
+// rebuilds checkpoints.json from existing symbol data files
+//
+const DATA_PATH = './symbols';
+async function rebuildCheckpoints(symbols, resolutions) {
   const checkpoints = [];
   // https://advancedweb.hu/how-to-use-async-functions-with-array-foreach-in-javascript/
   await Promise.all(
     symbols.map(async (symbol) => {
       await resolutions.reduce(async (memo, resol) => {
         await memo;
+        const { interval } = resol;
 
-        const { interval, seedPeriod } = resol;
-        const data = await fetchData(symbol, interval, seedPeriod);
+        const data = readJsonFile(`${DATA_PATH}/${symbol}_${interval}.json`);
 
-        // write ticker data
-        writeData(data, 'w', `${symbol}_${interval}.json`);
-
+        const checkpoint = Object.values(JSON.parse(data)).at(-1)[6];
         checkpoints.push({
           symbol,
           interval,
-          checkpoint: `${Object.values(data).at(-1)[0]}`,
+          checkpoint,
         });
       }, undefined);
     })
   );
 
   // write ticker datetime checkpoints
-  console.log(checkpoints);
-  writeData(
-    JSON.stringify(checkpoints).replace(/\\/g, ''),
-    'w',
-    'checkpoint.json'
+  console.log('Found following checkpoints\n', checkpoints);
+  writeJsonFile(checkpoints, 'w', 'checkpoints.json');
+}
+
+//
+// fetch all symbols
+//
+async function fetchSymbols(symbols, resolutions) {
+  const i2secs = {
+    '4h': 14400,
+    '6h': 21600,
+    '12h': 43200,
+    '1d': 86400,
+  };
+
+  let existCheckpoints = true;
+  let checkpointsJson = [];
+
+  try {
+    checkpointsJson = await readJsonFile(`checkpoints.json`);
+  } catch (err) {
+    console.log('Cannot find checkpoints file', err);
+    existCheckpoints = false;
+  }
+  const checkpoints = existCheckpoints ? JSON.parse(checkpointsJson) : [];
+  let nextCheckpoints = [];
+
+  await Promise.all(
+    symbols.map(async (symbol) => {
+      await resolutions.reduce(async (memo, resol) => {
+        await memo;
+        let doneSymbolSeed = true;
+        const { interval, seedPeriod } = resol;
+
+        // check if symbol data exists
+        try {
+          await access(
+            `${DATA_PATH}/${symbol}_${interval}.json`,
+            constants.F_OK
+          );
+        } catch (err) {
+          doneSymbolSeed = false;
+        }
+
+        let data;
+        let checkpoint;
+        if (!existCheckpoints || !doneSymbolSeed) {
+          console.log(`Seeding ${symbol}, ${interval} ...`);
+          data = await fetchData(symbol, interval, seedPeriod);
+          checkpoint = `${Object.values(data).at(-1)[6]}`;
+        } else {
+          const nowUTC = Date.parse(new Date());
+          const o = checkpoints.find((o) => {
+            return o.symbol === symbol && interval === interval
+              ? o.checkpoint
+              : 0;
+          });
+          let diff;
+          checkpoint = o.checkpoint;
+          // checkpoint is close datetime. Binance API sets current bar's
+          // close datetime in the future. So, nowUTC - checkpoint is negative
+          const needUpdate = (diff = (nowUTC - checkpoint) / 1000) > 0;
+          // console.log({
+          //   symbol,
+          //   interval,
+          //   needUpdate,
+          //   diff,
+          //   nowUTC,
+          //   checkpoint,
+          //   interval,
+
+          //   period:
+          //     diff === nowUTC / 1000
+          //       ? seedPeriod
+          //       : Math.floor(diff / i2secs[interval]) + 1,
+          // });
+
+          needUpdate && console.log(`Updating ${symbol} ${interval} ...`);
+          data = needUpdate
+            ? await fetchData(
+                symbol,
+                interval,
+                diff === nowUTC / 1000
+                  ? seedPeriod
+                  : Math.floor(diff / i2secs[interval]) + 1
+              )
+            : undefined;
+        }
+
+        if (data) {
+          writeJsonFile(data, 'a', `${symbol}_${interval}.json`);
+        }
+
+        nextCheckpoints.push({
+          symbol,
+          interval,
+          checkpoint,
+        });
+      }, undefined);
+    })
   );
+
+  if (nextCheckpoints.length !== 0) {
+    console.log(
+      `Writing next checkpoints, ${nextCheckpoints.length} symbol checkpoints`
+    );
+    writeJsonFile(nextCheckpoints, 'w', 'checkpoints.json');
+  }
 }
 
-async function fetchFromCheckpoint(symbols, resolutions) {
-  const checkpointsJson = await readFile(`./symbols/checkpoint.json`);
-  const checkpoints = JSON.parse(checkpointsJson);
-  console.log(checkpoints);
-  const nowUTC = Date.parse(new Date());
-  const H4 = 14400;
-  const H6 = 21600;
-  const H12 = 43200;
-  const D1 = 86400;
-  // await Promise.all(
-  //   symbols.map(async (symbol) => {
-  //     await resolutions.reduce(async (memo, resol) => {
-  //       await memo;
-
-  //       const { interval, seedPeriod } = resol;
-  //       const data = await fetchData(symbol, interval, seedPeriod);
-
-  //       // write ticker data
-  //       writeData(data, 'w', `${symbol}_${interval}.json`);
-  //     }, undefined);
-  //   })
-  // );
-}
-
+//
+//
+//
 async function SuperTrend(
   data,
   atrPeriod = ATR_PERIOD,
@@ -164,9 +268,9 @@ async function SuperTrend(
   return band;
 }
 
-// await seedSymbols(SYMBOLS, RESOLUTIONS);
+await fetchSymbols(SYMBOLS, RESOLUTIONS);
+// await rebuildCheckpoints(SYMBOLS, RESOLUTIONS);
 
-await fetchFromCheckpoint();
 // const H12 = await SuperTrend('BTCUSDT', '12h', 250);
 
 // [...Array(250 - ATR_PERIOD)].forEach((x, i) => {
