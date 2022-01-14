@@ -1,18 +1,16 @@
 import fs, { constants } from 'fs';
 import { readFile, writeFile, access } from 'fs/promises';
 import fetch from 'node-fetch';
+import { Command } from 'commander/esm.mjs';
 import chalk from 'chalk';
 import Indicators from 'technicalindicators';
 
-const ATR_PERIOD = 10;
-const ATR_MULTIPLIER = 2;
-
 const SYMBOLS = [
   'BTCUSDT',
-  'ETHUSDT',
-  'SOLUSDT',
-  'AVAXUSDT',
-  'LUNAUSDT',
+  // 'ETHUSDT',
+  // 'SOLUSDT',
+  // 'AVAXUSDT',
+  // 'LUNAUSDT',
   // 'DOTUSDT',
   // 'MATICUSDT',
   // 'ADAUSDT',
@@ -31,6 +29,7 @@ const RESOLUTIONS = [
   { interval: '4h', seedPeriod: 720 },
 ];
 
+const program = new Command();
 async function fetchData(symbol, interval, limit) {
   const response = await fetch(
     'https://api.binance.com/api/v3/klines?' +
@@ -204,66 +203,129 @@ async function fetchSymbols(symbols, resolutions) {
   }
 }
 
-//
-//
-//
-async function SuperTrend(
-  data,
-  atrPeriod = ATR_PERIOD,
-  multiplier = ATR_MULTIPLIER
-) {
-  const datetime = data.map((pt) => pt[6]);
-  const src = data.map((pt) => (parseFloat(pt[2]) + parseFloat(pt[3])) / 2);
-  const highs = data.map((pt) => pt[2]);
-  const lows = data.map((pt) => pt[3]);
-  const closes = data.map((pt) => pt[4]);
-  const ATR = Indicators.atr({
-    period: atrPeriod, // SuperTrend param
-    high: highs,
-    low: lows,
-    close: closes,
-  });
+function iterate(filterFn) {
+  return async function (symbols = SYMBOLS, resolutions = RESOLUTIONS) {
+    const result = await Promise.all(
+      symbols.map(async (symbol) => {
+        const tfs4symbol = await resolutions.reduce(
+          async (memo, resolution) => {
+            const { interval } = resolution;
+            const json = await readJsonFile(`${symbol}_${interval}.json`);
+            const data = JSON.parse(json);
 
-  // (H - L) /2
-  let bot1 = src[atrPeriod] - multiplier * ATR[0];
-  let top1 = src[atrPeriod] + multiplier * ATR[0];
-  let trend = 1;
-  let trend1 = 1;
-  const band = ATR.map((atr, idx) => {
-    const closeIdx = atrPeriod + idx;
-    const close = closes[closeIdx];
+            // ...await memo. Im using wrong tool for the work. Async makes things time consuming
+            // Python? or just sync version?
+            // https://stackoverflow.com/questions/41243468/javascript-array-reduce-with-async-await
+            return { ...(await memo), [interval]: filterFn(data) };
+          },
+          {}
+        );
 
-    const bot = src[idx + atrPeriod] - multiplier * atr;
-    bot1 = closes[closeIdx - 1] > bot1 ? Math.max(bot, bot1) : bot;
+        tfs4symbol.symbol = symbol;
+        return tfs4symbol;
+      })
+    );
 
-    const top = src[idx + atrPeriod] + multiplier * atr;
-    top1 = closes[closeIdx - 1] < top1 ? Math.min(top, top1) : top;
-
-    trend =
-      trend === -1 && closes[closeIdx] > top1
-        ? 1
-        : trend === 1 && closes[closeIdx] < bot1
-        ? -1
-        : trend;
-
-    const buySignal = trend === 1 && trend1 === -1;
-    const sellSignal = trend === -1 && trend1 === 1;
-    trend1 = trend;
-
-    return [
-      new Date(datetime[idx + atrPeriod]).toLocaleString('en-US'),
-      bot1,
-      top1,
-      trend,
-      buySignal,
-      sellSignal,
-    ];
-  });
-
-  return band;
+    console.log(result);
+    return result;
+  };
 }
 
-await fetchSymbols(SYMBOLS, RESOLUTIONS);
+//
+//
+//
+function SuperTrend(atrPeriod = 10, multiplier = 2) {
+  return (data) => {
+    const datetime = data.map((pt) => pt[6]);
+    const src = data.map((pt) => (parseFloat(pt[2]) + parseFloat(pt[3])) / 2);
+    const highs = data.map((pt) => pt[2]);
+    const lows = data.map((pt) => pt[3]);
+    const closes = data.map((pt) => pt[4]);
+    const ATR = Indicators.atr({
+      period: atrPeriod, // SuperTrend param
+      high: highs,
+      low: lows,
+      close: closes,
+    });
+
+    // (H - L) /2
+    let bot1 = src[atrPeriod] - multiplier * ATR[0];
+    let top1 = src[atrPeriod] + multiplier * ATR[0];
+    let trend = 1;
+    let trend1 = 1;
+    const band = ATR.map((atr, idx) => {
+      const closeIdx = atrPeriod + idx;
+      const close = closes[closeIdx];
+
+      const bot = src[idx + atrPeriod] - multiplier * atr;
+      bot1 = closes[closeIdx - 1] > bot1 ? Math.max(bot, bot1) : bot;
+
+      const top = src[idx + atrPeriod] + multiplier * atr;
+      top1 = closes[closeIdx - 1] < top1 ? Math.min(top, top1) : top;
+
+      trend =
+        trend === -1 && closes[closeIdx] > top1
+          ? 1
+          : trend === 1 && closes[closeIdx] < bot1
+          ? -1
+          : trend;
+
+      const buySignal = trend === 1 && trend1 === -1;
+      const sellSignal = trend === -1 && trend1 === 1;
+      trend1 = trend;
+
+      // console.log({
+      //   date: new Date(datetime[idx + atrPeriod]).toLocaleString('en-US'),
+      //   bot1,
+      //   top1,
+      //   trend,
+      //   buySignal,
+      //   sellSignal,
+      // });
+      return [
+        new Date(datetime[idx + atrPeriod]).toLocaleString('en-US'),
+        bot1,
+        top1,
+        trend,
+        buySignal,
+        sellSignal,
+      ];
+    });
+
+    return band;
+  };
+}
+
+function main() {
+  program
+    .option('-f --fetch-symbols', 'fetch symbols, in code')
+    .option(
+      '-b --rebuild-from-symbols',
+      'rebuild checkpoints file from symbols data'
+    )
+    .option(
+      '-s --run-supertrend <symbols...>',
+      'run supertrend on fetched symbols'
+    );
+
+  program.parse(process.argv);
+
+  const options = program.opts();
+
+  if (options.fetchSymbols) fetchSymbols(SYMBOLS, RESOLUTIONS);
+  if (options.rebuildFromSymbols)
+    rebuildCheckpointsForSymbols(SYMBOLS, RESOLUTIONS);
+  if (options.runSupertrend) {
+    if (options.runSupertrend === 'all ') iterate(SuperTrend);
+    else {
+      const fnST = SuperTrend();
+      iterate(fnST)(options.runSupertrend);
+    }
+  }
+}
+
+main();
+// await fetchSymbols(SYMBOLS, RESOLUTIONS);
 // await rebuildCheckpoints(SYMBOLS, RESOLUTIONS);
 
 // const H12 = await SuperTrend('BTCUSDT', '12h', 250);
