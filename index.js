@@ -346,7 +346,22 @@ function SuperTrend(atrPeriod = 10, multiplier = 2) {
   };
 }
 
+//
+//
+//
+function createDirs() {
+  if (!fs.existsSync(DATA_PATH)) {
+    fs.mkdirSync(DATA_PATH);
+    console.log(`createDirs() :: ${DATA_PATH} dir has been created`);
+  }
+}
+
+//
+//
+//
 async function main() {
+  createDirs();
+
   program
     .option('-f --fetch-symbols', 'fetch symbols, in code')
     .option(
