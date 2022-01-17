@@ -7,20 +7,19 @@ import Indicators from 'technicalindicators';
 
 const SYMBOLS = [
   'BTCUSDT',
-  // 'ETHUSDT',
-  // 'SOLUSDT',
-  // 'AVAXUSDT',
-  // 'LUNAUSDT',
-  // 'DOTUSDT',
-  // 'MATICUSDT',
-  // 'ADAUSDT',
-  // 'ATOMUSDT',
-  // 'ONEUSDT',
-  // 'EGLDUSDT',
-  // 'LINKUSDT',
-  // 'FTMUSDT',
-  // 'ONEUSDT',
-  // 'NEARUSDT',
+  'ETHUSDT',
+  'SOLUSDT',
+  'AVAXUSDT',
+  'LUNAUSDT',
+  'DOTUSDT',
+  'MATICUSDT',
+  'ADAUSDT',
+  'ATOMUSDT',
+  'ONEUSDT',
+  'EGLDUSDT',
+  'LINKUSDT',
+  'FTMUSDT',
+  'NEARUSDT',
 ];
 const RESOLUTIONS = [
   { interval: '1d', seedPeriod: 120 },
@@ -46,34 +45,38 @@ async function fetchData(symbol, interval, limit) {
 //
 //
 //
+const DATA_PATH = './symbols';
 async function writeJsonFile(data, flag, filename) {
   try {
-    await writeFile(`./symbols/${filename}`, JSON.stringify(data), { flag });
+    let writeData;
+    if (flag === 'a') {
+      const oldJsonData = await readJsonFile(filename);
+      const oldData = JSON.parse(oldJsonData);
+      writeData = oldData.concat(data);
+    } else writeData = data;
+
+    await writeFile(`${DATA_PATH}/${filename}`, JSON.stringify(writeData), {
+      flag: 'w',
+    });
   } catch (err) {
-    console.error(`writeJsonFile() :: Error writing ./symbols/${filename}`);
+    console.error(`writeJsonFile() :: Error writing ${DATA_PATH}/${filename}`);
     throw err;
   }
 }
 
 async function readJsonFile(filename) {
   try {
-    const data = await readFile(`./symbols/${filename}`);
+    const data = await readFile(`${DATA_PATH}/${filename}`);
     return data;
   } catch (err) {
-    console.error(`readJsonFile() :: Error reading ./symbols/${filename}`);
+    console.error(`readJsonFile() :: Error reading ${DATA_PATH}/${filename}`);
     throw err;
   }
 }
 
 //
-// check integrity. All  symbol files have to be present in the checkpoint file
-//
-async function checkIntegrity() {}
-
-//
 // rebuilds checkpoints.json for defined SYMBOLS
 //
-const DATA_PATH = './symbols';
 async function rebuildCheckpointsForSymbols(symbols, resolutions) {
   const checkpoints = [];
   // https://advancedweb.hu/how-to-use-async-functions-with-array-foreach-in-javascript/
@@ -85,7 +88,7 @@ async function rebuildCheckpointsForSymbols(symbols, resolutions) {
 
         let data;
         try {
-          data = await readJsonFile(`${DATA_PATH}/${symbol}_${interval}.json`);
+          data = await readJsonFile(`${symbol}_${interval}.json`);
         } catch (err) {
           console.log(
             `rebuildCheckpoints() :: cannot find ${DATA_PATH}/${symbol}_${interval}.json`,
@@ -140,14 +143,17 @@ async function fetchSymbols(symbols, resolutions) {
         await memo;
 
         const { interval, seedPeriod } = resol;
-        let { checkpoint } = checkpoints.find((o) => {
-          return o.symbol === symbol && interval === interval
-            ? o.checkpoint
-            : 0;
+
+        let { checkpoint } = checkpoints.find((obj) => {
+          return obj.symbol === symbol && obj.interval === interval;
         }) || { checkpoint: -1 };
 
         const symbolFname = `${symbol}_${interval}.json`;
         let fetchedData;
+        let didSeed = false;
+
+        console.log(`Checkpoint for ${symbol}, ${interval} = ${checkpoint}`);
+
         if (checkpoint === -1) {
           try {
             await access(`${DATA_PATH}/${symbolFname}`, constants.F_OK);
@@ -160,6 +166,7 @@ async function fetchSymbols(symbols, resolutions) {
             console.log(`fetchSymbols() :: Seeding ${symbol}, ${interval} ...`);
             fetchedData = await fetchData(symbol, interval, seedPeriod);
             checkpoint = `${Object.values(fetchedData).at(-1)[6]}`;
+            didSeed = true;
           }
         } else {
           const nowUTC = Date.parse(new Date());
@@ -183,7 +190,8 @@ async function fetchSymbols(symbols, resolutions) {
         }
 
         if (fetchedData) {
-          writeJsonFile(fetchedData, 'a', symbolFname);
+          writeJsonFile(fetchedData, didSeed ? 'w' : 'a', symbolFname);
+          checkpoint = `${Object.values(fetchedData).at(-1)[6]}`;
         }
 
         nextCheckpoints.push({
@@ -203,7 +211,17 @@ async function fetchSymbols(symbols, resolutions) {
   }
 }
 
+//
+//
+//
 function iterate(filterFn) {
+  const trim = {
+    '1d': 2,
+    '12h': 4,
+    '6h': 8,
+    '4h': 12,
+  };
+
   return async function (symbols = SYMBOLS, resolutions = RESOLUTIONS) {
     const result = await Promise.all(
       symbols.map(async (symbol) => {
@@ -216,18 +234,24 @@ function iterate(filterFn) {
             // ...await memo. Im using wrong tool for the work. Async makes things time consuming
             // Python? or just sync version?
             // https://stackoverflow.com/questions/41243468/javascript-array-reduce-with-async-await
-            return { ...(await memo), [interval]: filterFn(data) };
+            return {
+              ...(await memo),
+              [interval]: filterFn(data).slice(-trim[interval]),
+            };
           },
           {}
         );
 
-        tfs4symbol.symbol = symbol;
-        return tfs4symbol;
+        return { [symbol]: tfs4symbol };
       })
     );
 
-    console.log(result);
-    return result;
+    // arr of Obj -> Obj[symbol]={ 4h:[], 1d: [], ...}
+    return result.reduce((acc, curr) => {
+      const [[key, value], _] = Object.entries(curr);
+      acc[key] = value;
+      return acc;
+    }, {});
   };
 }
 
@@ -282,21 +306,21 @@ function SuperTrend(atrPeriod = 10, multiplier = 2) {
       //   buySignal,
       //   sellSignal,
       // });
-      return [
-        new Date(datetime[idx + atrPeriod]).toLocaleString('en-US'),
-        bot1,
-        top1,
+      return {
+        datetime: new Date(datetime[idx + atrPeriod]).toLocaleString('en-US'),
+        bottom: bot1,
+        top: top1,
         trend,
         buySignal,
         sellSignal,
-      ];
+      };
     });
 
     return band;
   };
 }
 
-function main() {
+async function main() {
   program
     .option('-f --fetch-symbols', 'fetch symbols, in code')
     .option(
@@ -319,7 +343,8 @@ function main() {
     if (options.runSupertrend === 'all ') iterate(SuperTrend);
     else {
       const fnST = SuperTrend();
-      iterate(fnST)(options.runSupertrend);
+      const results = await iterate(fnST)(options.runSupertrend);
+      console.log(results);
     }
   }
 }
