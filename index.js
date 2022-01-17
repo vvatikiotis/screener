@@ -215,6 +215,7 @@ async function fetchSymbols(symbols, resolutions) {
 //
 //
 function iterate(filterFn) {
+  // TODO: maybe pass trim as an func argument?
   const trim = {
     '1d': 2,
     '12h': 4,
@@ -231,8 +232,10 @@ function iterate(filterFn) {
             const json = await readJsonFile(`${symbol}_${interval}.json`);
             const data = JSON.parse(json);
 
-            // ...await memo. Im using wrong tool for the work. Async makes things time consuming
-            // Python? or just sync version?
+            // ...await memo. Am I using the wrong tool for the job?
+            // Async makes dev work time consuming.
+            // Python? Amitrader? R? or just sync version?
+
             // https://stackoverflow.com/questions/41243468/javascript-array-reduce-with-async-await
             return {
               ...(await memo),
@@ -258,9 +261,31 @@ function iterate(filterFn) {
 //
 //
 //
+function output(results, symbols = SYMBOLS, resolutions = RESOLUTIONS) {
+  // console.log(results);
+  symbols.forEach((symbol) => {
+    console.log(`===== ${symbol} =====`);
+
+    resolutions.forEach((resolution) => {
+      const interval = results[symbol][resolution.interval];
+      console.log(resolution.interval);
+      console.log(
+        interval.map(({ openDT, trend }) => ({
+          openDT,
+          trend,
+        }))
+      );
+    });
+  });
+}
+
+//
+//
+//
 function SuperTrend(atrPeriod = 10, multiplier = 2) {
   return (data) => {
-    const datetime = data.map((pt) => pt[6]);
+    const openDT = data.map((pt) => pt[0]);
+    const closeDT = data.map((pt) => pt[6]);
     const src = data.map((pt) => (parseFloat(pt[2]) + parseFloat(pt[3])) / 2);
     const highs = data.map((pt) => pt[2]);
     const lows = data.map((pt) => pt[3]);
@@ -307,7 +332,8 @@ function SuperTrend(atrPeriod = 10, multiplier = 2) {
       //   sellSignal,
       // });
       return {
-        datetime: new Date(datetime[idx + atrPeriod]).toLocaleString('en-US'),
+        openDT: new Date(openDT[idx + atrPeriod]).toLocaleString('en-US'),
+        closeDT: new Date(closeDT[idx + atrPeriod]).toLocaleString('en-US'),
         bottom: bot1,
         top: top1,
         trend,
@@ -344,7 +370,8 @@ async function main() {
     else {
       const fnST = SuperTrend();
       const results = await iterate(fnST)(options.runSupertrend);
-      console.log(results);
+
+      output(results, options.runSupertrend);
     }
   }
 }
