@@ -5,6 +5,8 @@ import { Command } from 'commander/esm.mjs';
 import chalk from 'chalk';
 import Indicators from 'technicalindicators';
 
+// -----------------------------------------------------
+// HACK these and you are ready to go
 const SYMBOLS = [
   'BTCUSDT',
   'ETHUSDT',
@@ -28,6 +30,23 @@ const RESOLUTIONS = [
   { interval: '6h', seedPeriod: 480 },
   { interval: '4h', seedPeriod: 720 },
 ];
+// Seconds in a given timeframe
+const I2SECS = {
+  '4h': 14400,
+  '6h': 21600,
+  '12h': 43200,
+  '1d': 86400,
+};
+// TODO: maybe pass trim as an func argument?
+// Number of bars we are intereted in, per timeframe
+const GETLASTPERIODS = {
+  '1d': 2,
+  '12h': 4,
+  '6h': 8,
+  '4h': 12,
+};
+// End HACK
+// -----------------------------------------------------
 
 async function fetchData(symbol, interval, limit) {
   const response = await fetch(
@@ -121,14 +140,6 @@ async function rebuildCheckpointsForSymbols(symbols, resolutions) {
 // fetch all symbols
 //
 async function fetchSymbols(symbols, resolutions) {
-  // Seconds in a given timeframe
-  const i2secs = {
-    '4h': 14400,
-    '6h': 21600,
-    '12h': 43200,
-    '1d': 86400,
-  };
-
   let checkpoints = [];
   try {
     const checkpointsJson = await readJsonFile(`checkpoints.json`);
@@ -185,7 +196,7 @@ async function fetchSymbols(symbols, resolutions) {
                 interval,
                 diff === nowUTC / 1000
                   ? seedPeriod
-                  : Math.floor(diff / i2secs[interval]) + 1
+                  : Math.floor(diff / I2SECS[interval]) + 1
               )
             : undefined;
         }
@@ -216,15 +227,6 @@ async function fetchSymbols(symbols, resolutions) {
 //
 //
 function iterate(filterFn) {
-  // TODO: maybe pass trim as an func argument?
-  // Number of bars we are intereted in, per timeframe
-  const trim = {
-    '1d': 2,
-    '12h': 4,
-    '6h': 8,
-    '4h': 12,
-  };
-
   return async function (symbols = SYMBOLS, resolutions = RESOLUTIONS) {
     console.log(`//\n// Start processing ${filterFn.name}\n//`);
     const result = await Promise.all(
@@ -242,7 +244,7 @@ function iterate(filterFn) {
             // https://stackoverflow.com/questions/41243468/javascript-array-reduce-with-async-await
             return {
               ...(await memo),
-              [interval]: filterFn(data).slice(-trim[interval]),
+              [interval]: filterFn(data).slice(-GETLASTPERIODS[interval]),
             };
           },
           {}
