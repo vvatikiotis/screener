@@ -21,6 +21,7 @@ const SYMBOLS = [
   'FTMUSDT',
   'NEARUSDT',
 ];
+// timeframes and number of bars for seeding
 const RESOLUTIONS = [
   { interval: '1d', seedPeriod: 120 },
   { interval: '12h', seedPeriod: 240 },
@@ -120,6 +121,7 @@ async function rebuildCheckpointsForSymbols(symbols, resolutions) {
 // fetch all symbols
 //
 async function fetchSymbols(symbols, resolutions) {
+  // Seconds in a given timeframe
   const i2secs = {
     '4h': 14400,
     '6h': 21600,
@@ -215,6 +217,7 @@ async function fetchSymbols(symbols, resolutions) {
 //
 function iterate(filterFn) {
   // TODO: maybe pass trim as an func argument?
+  // Number of bars we are intereted in, per timeframe
   const trim = {
     '1d': 2,
     '12h': 4,
@@ -223,6 +226,7 @@ function iterate(filterFn) {
   };
 
   return async function (symbols = SYMBOLS, resolutions = RESOLUTIONS) {
+    console.log(`//\n// Start processing ${filterFn.name}\n//`);
     const result = await Promise.all(
       symbols.map(async (symbol) => {
         const tfs4symbol = await resolutions.reduce(
@@ -283,7 +287,7 @@ function output(results, symbols = SYMBOLS, resolutions = RESOLUTIONS) {
 //
 //
 function SuperTrend(atrPeriod = 10, multiplier = 2) {
-  return (data) => {
+  return function __supertrend(data) {
     const openDT = data.map((pt) => pt[0]);
     const closeDT = data.map((pt) => pt[6]);
     const src = data.map((pt) => (parseFloat(pt[2]) + parseFloat(pt[3])) / 2);
@@ -364,15 +368,14 @@ async function main() {
 
   const program = new Command();
   program
+    .option(
+      '-s, --run-supertrend [symbols...]',
+      'run supertrend on fetched symbols'
+    )
     .option('-f, --fetch-symbols', 'fetch symbols, in code')
     .option(
       '-b, --rebuild-from-symbols',
       'rebuild checkpoints file from symbols data'
-    )
-    .option(
-      '-s, --run-supertrend <symbols...>',
-      'run supertrend on fetched symbols',
-      'all'
     );
 
   program.parse();
@@ -386,10 +389,13 @@ async function main() {
   if (options.runSupertrend) {
     let results;
     const fnST = SuperTrend();
-    if (options.runSupertrend === 'all') {
+
+    // -s only
+    if (options.runSupertrend === true) {
       results = await iterate(fnST)();
       output(results);
     } else {
+      // -s symbol
       results = await iterate(fnST)(options.runSupertrend);
       output(results, options.runSupertrend);
     }
@@ -397,11 +403,3 @@ async function main() {
 }
 
 main();
-// await fetchSymbols(SYMBOLS, RESOLUTIONS);
-// await rebuildCheckpoints(SYMBOLS, RESOLUTIONS);
-
-// const H12 = await SuperTrend('BTCUSDT', '12h', 250);
-
-// [...Array(250 - ATR_PERIOD)].forEach((x, i) => {
-//   console.log(i, H12[i][0], H12[i][1], H12[i][2], H12[i][3]);
-// });
