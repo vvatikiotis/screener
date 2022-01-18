@@ -28,7 +28,6 @@ const RESOLUTIONS = [
   { interval: '4h', seedPeriod: 720 },
 ];
 
-const program = new Command();
 async function fetchData(symbol, interval, limit) {
   const response = await fetch(
     'https://api.binance.com/api/v3/klines?' +
@@ -262,7 +261,6 @@ function iterate(filterFn) {
 //
 //
 function output(results, symbols = SYMBOLS, resolutions = RESOLUTIONS) {
-  // console.log(results);
   symbols.forEach((symbol) => {
     console.log(`===== ${symbol} =====`);
 
@@ -276,6 +274,8 @@ function output(results, symbols = SYMBOLS, resolutions = RESOLUTIONS) {
         }))
       );
     });
+
+    console.log('\n\n');
   });
 }
 
@@ -362,30 +362,35 @@ function createDirs() {
 async function main() {
   createDirs();
 
+  const program = new Command();
   program
-    .option('-f --fetch-symbols', 'fetch symbols, in code')
+    .option('-f, --fetch-symbols', 'fetch symbols, in code')
     .option(
-      '-b --rebuild-from-symbols',
+      '-b, --rebuild-from-symbols',
       'rebuild checkpoints file from symbols data'
     )
     .option(
-      '-s --run-supertrend <symbols...>',
-      'run supertrend on fetched symbols'
+      '-s, --run-supertrend <symbols...>',
+      'run supertrend on fetched symbols',
+      'all'
     );
 
-  program.parse(process.argv);
+  program.parse();
 
   const options = program.opts();
 
   if (options.fetchSymbols) fetchSymbols(SYMBOLS, RESOLUTIONS);
   if (options.rebuildFromSymbols)
     rebuildCheckpointsForSymbols(SYMBOLS, RESOLUTIONS);
-  if (options.runSupertrend) {
-    if (options.runSupertrend === 'all ') iterate(SuperTrend);
-    else {
-      const fnST = SuperTrend();
-      const results = await iterate(fnST)(options.runSupertrend);
 
+  if (options.runSupertrend) {
+    let results;
+    const fnST = SuperTrend();
+    if (options.runSupertrend === 'all') {
+      results = await iterate(fnST)();
+      output(results);
+    } else {
+      results = await iterate(fnST)(options.runSupertrend);
       output(results, options.runSupertrend);
     }
   }
