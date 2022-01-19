@@ -22,6 +22,9 @@ const SYMBOLS = [
   'LINKUSDT',
   'FTMUSDT',
   'NEARUSDT',
+  'DUSKUSDT',
+  'SYSUSDT',
+  'ZILUSDT',
 ];
 // timeframes and number of bars for seeding
 const RESOLUTIONS = [
@@ -47,6 +50,17 @@ const GETLASTPERIODS = {
 };
 // End HACK
 // -----------------------------------------------------
+
+//
+// this will run immediately
+//
+function hasDuplicateSymbols(symbols = SYMBOLS) {
+  const duplicates = symbols.filter(
+    (item, index) => index !== symbols.indexOf(item)
+  );
+
+  return duplicates.length !== 0;
+}
 
 async function fetchData(symbol, interval, limit) {
   const response = await fetch(
@@ -367,6 +381,11 @@ function createDirs() {
 //
 async function main() {
   createDirs();
+
+  if (hasDuplicateSymbols()) {
+    console.log('exit code 1: Duplicate symbols');
+    process.exit(1);
+  }
 
   const program = new Command();
   program
