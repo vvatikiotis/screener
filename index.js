@@ -34,6 +34,7 @@ const RESOLUTIONS = [
   { interval: '4h', seedPeriod: 720 },
 ];
 // Seconds in a given timeframe
+// Used to calculate the update diff
 const I2SECS = {
   '4h': 14400,
   '6h': 21600,
@@ -42,6 +43,7 @@ const I2SECS = {
 };
 // TODO: maybe pass trim as an func argument?
 // Number of bars we are intereted in, per timeframe
+// Used only in output
 const GETLASTPERIODS = {
   '1d': 2,
   '12h': 4,
