@@ -14,17 +14,18 @@ const SYMBOLS = [
   'AVAXUSDT',
   'LUNAUSDT',
   'DOTUSDT',
-  'MATICUSDT',
   'ADAUSDT',
   'ATOMUSDT',
   'ONEUSDT',
+  'BNBUSDT',
   'EGLDUSDT',
   'LINKUSDT',
   'FTMUSDT',
   'NEARUSDT',
+  'ZILUSDT',
+  'MATICUSDT',
   'DUSKUSDT',
   'SYSUSDT',
-  'ZILUSDT',
 ];
 // timeframes and number of bars for seeding
 const RESOLUTIONS = [
