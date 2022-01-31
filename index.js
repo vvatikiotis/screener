@@ -26,9 +26,12 @@ const SYMBOLS = [
   'MATICUSDT',
   'DUSKUSDT',
   'SYSUSDT',
+  'CRVUSDT',
 ];
 // timeframes and number of bars for seeding
 const RESOLUTIONS = [
+  { interval: '1w', seedPeriod: 500 },
+  { interval: '3d', seedPeriod: 500 },
   { interval: '1d', seedPeriod: 120 },
   { interval: '12h', seedPeriod: 240 },
   { interval: '6h', seedPeriod: 480 },
@@ -41,15 +44,19 @@ const I2SECS = {
   '6h': 21600,
   '12h': 43200,
   '1d': 86400,
+  '3d': 259200,
+  '1w': 604800,
 };
 // TODO: maybe pass trim as an func argument?
 // Number of bars we are intereted in, per timeframe
-// Used only in output
+// Used *only* in output
 const GETLASTPERIODS = {
-  '1d': 2,
-  '12h': 4,
-  '6h': 8,
-  '4h': 12,
+  '1w': 4,
+  '3d': 2,
+  '1d': 3,
+  '12h': 6,
+  '6h': 10,
+  '4h': 14,
 };
 // End HACK
 // -----------------------------------------------------
