@@ -4,31 +4,42 @@ import fetch from 'node-fetch';
 import { Command } from 'commander/esm.mjs';
 import chalk from 'chalk';
 import Indicators from 'technicalindicators';
+import { exit } from 'process';
+
+let SYMBOLS = [];
+// put this in symbol.list
+// one pair per line
+// example:
+// BTCUSDT
+// ETHUSDT
+// ... and so on
+
+// TODO: remove this
+// const SYMBOLS = [
+//   'BTCUSDT',
+//   'ETHUSDT',
+//   'SOLUSDT',
+//   'AVAXUSDT',
+//   'LUNAUSDT',
+//   'DOTUSDT',
+//   'ADAUSDT',
+//   'ATOMUSDT',
+//   'ONEUSDT',
+//   'BNBUSDT',
+//   'EGLDUSDT',
+//   'LINKUSDT',
+//   'FTMUSDT',
+//   'NEARUSDT',
+//   'ZILUSDT',
+//   'MATICUSDT',
+//   'DUSKUSDT',
+//   'SYSUSDT',
+//   'CRVUSDT',
+//   'AAVEUSDT',
+// ];
 
 // -----------------------------------------------------
 // HACK these and you are ready to go
-const SYMBOLS = [
-  'BTCUSDT',
-  'ETHUSDT',
-  'SOLUSDT',
-  'AVAXUSDT',
-  'LUNAUSDT',
-  'DOTUSDT',
-  'ADAUSDT',
-  'ATOMUSDT',
-  'ONEUSDT',
-  'BNBUSDT',
-  'EGLDUSDT',
-  'LINKUSDT',
-  'FTMUSDT',
-  'NEARUSDT',
-  'ZILUSDT',
-  'MATICUSDT',
-  'DUSKUSDT',
-  'SYSUSDT',
-  'CRVUSDT',
-  'AAVEUSDT',
-];
 // timeframes and number of bars for seeding
 const RESOLUTIONS = [
   { interval: '1w', seedPeriod: 500 },
@@ -61,6 +72,7 @@ const GETLASTPERIODS = {
 };
 // End HACK
 // -----------------------------------------------------
+const SYMBOL_FILENAME = 'symbol.list';
 
 //
 // this will run immediately
@@ -380,23 +392,62 @@ function SuperTrend(atrPeriod = 10, multiplier = 2) {
 //
 //
 //
-function createDirs() {
+function prepFSStruct() {
   if (!fs.existsSync(DATA_PATH)) {
     fs.mkdirSync(DATA_PATH);
-    console.log(`createDirs() :: ${DATA_PATH} dir has been created`);
+    console.log(`prepFSStruct() :: ${DATA_PATH} dir has been created.`);
+  }
+
+  if (!fs.existsSync(SYMBOL_FILENAME)) {
+    fs.writeFileSync(SYMBOL_FILENAME, '', { encoding: 'utf8' });
+    console.log(`prepFSStruct() :: ${SYMBOL_FILENAME} file has been created.`);
   }
 }
 
 //
 //
 //
+function readSymbols() {
+  let list;
+  try {
+    list = fs.readFileSync(SYMBOL_FILENAME, { encoding: 'utf8', flag: 'r' });
+  } catch (err) {
+    console.log(`Can not find symbols file ${SYMBOL_FILENAME}`, err);
+    exit(2);
+  }
+
+  if (list.length === 0) {
+    console.log(
+      `readSymbols() :: symbol file ${SYMBOL_FILENAME} is empty.\nOne pair, e.g. BTCUSDT, per line`
+    );
+    exit(3);
+  }
+
+  const symbols = list
+    .split('\n')
+    .filter((s) => s.length !== 0)
+    .map((s) => s.trim());
+
+  return symbols;
+}
+
+function testThings() {
+  console.log('Fill this with something');
+}
+
+//
+//
+//
 async function main() {
-  createDirs();
+  prepFSStruct();
 
   if (hasDuplicateSymbols()) {
     console.log('exit code 1: Duplicate symbols');
     process.exit(1);
   }
+
+  // global
+  SYMBOLS = readSymbols();
 
   const program = new Command();
   program
@@ -408,7 +459,8 @@ async function main() {
     .option(
       '-b, --rebuild-from-symbols',
       'rebuild checkpoints file from symbols data'
-    );
+    )
+    .option('-t --test', 'test/dry run things');
 
   program.parse();
 
@@ -432,6 +484,8 @@ async function main() {
       output(results, options.runSupertrend);
     }
   }
+
+  if (options.test) testThings();
 }
 
 main();
