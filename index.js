@@ -73,9 +73,10 @@ const GETLASTPERIODS = {
 // End HACK
 // -----------------------------------------------------
 const SYMBOL_FILENAME = 'symbol.list';
+const DATA_PATH = './symbols';
 
 //
-// this will run immediately
+//
 //
 function hasDuplicateSymbols(symbols = SYMBOLS) {
   const duplicates = symbols.filter(
@@ -101,7 +102,6 @@ async function fetchData(symbol, interval, limit) {
 //
 //
 //
-const DATA_PATH = './symbols';
 async function writeJsonFile(data, flag, filename) {
   try {
     let writeData;
@@ -441,13 +441,13 @@ function testThings() {
 async function main() {
   prepFSStruct();
 
-  if (hasDuplicateSymbols()) {
-    console.log('exit code 1: Duplicate symbols');
-    process.exit(1);
-  }
-
   // global
   SYMBOLS = readSymbols();
+
+  if (hasDuplicateSymbols(SYMBOLS)) {
+    console.log('main() :: exit code 1: Duplicate symbols');
+    process.exit(1);
+  }
 
   const program = new Command();
   program
