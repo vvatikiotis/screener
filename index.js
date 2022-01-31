@@ -27,6 +27,7 @@ const SYMBOLS = [
   'DUSKUSDT',
   'SYSUSDT',
   'CRVUSDT',
+  'AAVEUSDT',
 ];
 // timeframes and number of bars for seeding
 const RESOLUTIONS = [
