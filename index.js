@@ -78,14 +78,6 @@ const DATA_PATH = './symbols';
 //
 //
 //
-function hasDuplicateSymbols(symbols = SYMBOLS) {
-  const duplicates = symbols.filter(
-    (item, index) => index !== symbols.indexOf(item)
-  );
-
-  return duplicates.length !== 0;
-}
-
 async function fetchData(symbol, interval, limit) {
   const response = await fetch(
     'https://api.binance.com/api/v3/klines?' +
@@ -128,6 +120,62 @@ async function readJsonFile(filename) {
     console.error(`readJsonFile() :: Error reading ${DATA_PATH}/${filename}`);
     throw err;
   }
+}
+
+//
+//
+//
+function hasDuplicateSymbols(symbols = SYMBOLS) {
+  const duplicates = symbols.filter(
+    (item, index) => index !== symbols.indexOf(item)
+  );
+
+  return duplicates.length !== 0;
+}
+
+//
+//
+//
+async function checkSymbolsIntegrity(
+  symbols = SYMBOLS,
+  resolutions = RESOLUTIONS
+) {
+  await Promise.all(
+    symbols.map(async (symbol) => {
+      await resolutions.reduce(async (memo, resol) => {
+        await memo;
+        const { interval } = resol;
+
+        let data;
+        try {
+          data = await readJsonFile(`${symbol}_${interval}.json`);
+        } catch (err) {
+          console.log(
+            `checkSymbolsIntegrity() :: cannot find ${DATA_PATH}/${symbol}_${interval}.json`,
+            err
+          );
+          throw err;
+        }
+
+        const candles = JSON.parse(data);
+        const diff = I2SECS[resol.interval] * 1000;
+        console.log(`Checking integrity for ${symbol}_${resol.interval}...`);
+        for (let i = 0; i < candles.length - 1; i++) {
+          if (candles[i][0] + diff !== candles[i + 1][0]) {
+            console.log(
+              `checkSymbolsIntegrity() :: ${symbol}_${
+                resol.interval
+              }.json: Incorrect time diff between ${candles[i][0]} and ${
+                candles[i + 1][0]
+              } `
+            );
+
+            exit(4);
+          }
+        }
+      }, undefined);
+    })
+  );
 }
 
 //
@@ -412,7 +460,10 @@ function readSymbols() {
   try {
     list = fs.readFileSync(SYMBOL_FILENAME, { encoding: 'utf8', flag: 'r' });
   } catch (err) {
-    console.log(`Can not find symbols file ${SYMBOL_FILENAME}`, err);
+    console.log(
+      `readSymbols() :: Can not find symbols file ${SYMBOL_FILENAME}`,
+      err
+    );
     exit(2);
   }
 
@@ -432,7 +483,7 @@ function readSymbols() {
 }
 
 function testThings() {
-  console.log('Fill this with something');
+  console.log('testThings() :: Fill this with something');
 }
 
 //
@@ -460,6 +511,7 @@ async function main() {
       '-b, --rebuild-from-symbols',
       'rebuild checkpoints file from symbols data'
     )
+    .option('-c --check-integrity', 'check symbols timestamp order')
     .option('-t --test', 'test/dry run things');
 
   program.parse();
@@ -469,6 +521,7 @@ async function main() {
   if (options.fetchSymbols) fetchSymbols(SYMBOLS, RESOLUTIONS);
   if (options.rebuildFromSymbols)
     rebuildCheckpointsForSymbols(SYMBOLS, RESOLUTIONS);
+  if (options.checkIntegrity) await checkSymbolsIntegrity(SYMBOLS, RESOLUTIONS);
 
   if (options.runSupertrend) {
     let results;
