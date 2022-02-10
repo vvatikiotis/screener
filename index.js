@@ -2,6 +2,7 @@ import fs, { constants } from 'fs';
 import { readFile, writeFile, access } from 'fs/promises';
 import fetch from 'node-fetch';
 import { Command } from 'commander/esm.mjs';
+import promptly from 'promptly';
 import chalk from 'chalk';
 import Indicators from 'technicalindicators';
 import { exit } from 'process';
@@ -519,8 +520,12 @@ async function main() {
   const options = program.opts();
 
   if (options.fetchSymbols) fetchSymbols(SYMBOLS, RESOLUTIONS);
-  if (options.rebuildFromSymbols)
-    rebuildCheckpointsForSymbols(SYMBOLS, RESOLUTIONS);
+  if (options.rebuildFromSymbols) {
+    const answer = await promptly.confirm(
+      'Sure? Checkpoint file will be recreated:'
+    );
+    answer && rebuildCheckpointsForSymbols(SYMBOLS, RESOLUTIONS);
+  }
   if (options.checkIntegrity) await checkSymbolsIntegrity(SYMBOLS, RESOLUTIONS);
 
   if (options.runSupertrend) {
@@ -538,7 +543,9 @@ async function main() {
     }
   }
 
-  if (options.test) testThings();
+  if (options.test) {
+    testThings();
+  }
 }
 
 main();
