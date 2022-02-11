@@ -45,10 +45,10 @@ let SYMBOLS = [];
 const RESOLUTIONS = [
   { interval: '1w', seedPeriod: 500 },
   { interval: '3d', seedPeriod: 500 },
-  { interval: '1d', seedPeriod: 120 },
-  { interval: '12h', seedPeriod: 240 },
-  { interval: '6h', seedPeriod: 480 },
-  { interval: '4h', seedPeriod: 720 },
+  { interval: '1d', seedPeriod: 500 },
+  { interval: '12h', seedPeriod: 800 },
+  { interval: '6h', seedPeriod: 900 },
+  { interval: '4h', seedPeriod: 950 },
 ];
 // Seconds in a given timeframe
 // Used to calculate the update diff
@@ -352,23 +352,65 @@ function iterate(filterFn) {
 //
 //
 //
-function output(results, symbols = SYMBOLS, resolutions = RESOLUTIONS) {
+function output(
+  stResults, // results as we get them from our indicator
+  filterFn,
+  symbols = SYMBOLS
+  // resolutions = RESOLUTIONS
+) {
   symbols.forEach((symbol) => {
     console.log(`===== ${symbol} =====`);
 
-    resolutions.forEach((resolution) => {
-      const interval = results[symbol][resolution.interval];
-      console.log(resolution.interval);
-      console.log(
-        interval.map(({ openDT, trend }) => ({
-          openDT,
-          trend,
-        }))
-      );
-    });
+    const filtered = filterFn(stResults[symbol]);
 
-    console.log('\n\n');
+    console.log(filtered);
+    console.log();
   });
+}
+
+//
+// filter SuperTrend results
+// LONG only filter
+// if latest trend is UP and previous is DOWN -> that's a pivot point.
+// if both (the default) 4h and 12h timeframes exhibit -> buy signal
+// NOTE: should be parametric but anyway, for now
+function predicate(series) {
+  const last = -1;
+  const OneB4Last = -2;
+  const TwoB4Last = -3;
+
+  if (series.at(last).trend === 1 && series.at(OneB4Last).trend === -1)
+    return true;
+
+  if (
+    series.at(last).trend === 1 &&
+    series.at(OneB4Last).trend === 1 &&
+    series.at(TwoB4Last) === -1
+  )
+    return true;
+
+  return false;
+}
+
+// that's the filterFn argument of output function
+// default timeframes are 4h and 12h
+function filterSupertrend(
+  timeframes = RESOLUTIONS.map((r) => r.interval).filter(
+    (tf) => tf === '4h' || tf === '12h'
+  )
+) {
+  return (symbolResults) => {
+    return timeframes
+      .map((tf) => {
+        const series = symbolResults[tf];
+
+        // comment this and uncomment the return series to see just the results
+        if (predicate(series)) return [tf, 'buy'];
+        else return [tf, ''];
+        // return series;
+      })
+      .filter((r) => r[1] !== '');
+  };
 }
 
 //
@@ -507,6 +549,10 @@ async function main() {
       '-s, --run-supertrend [symbols...]',
       'run supertrend on fetched symbols'
     )
+    .option(
+      '-o --output-timeframes [timeframes...]',
+      'specify which timeframes to show. Options: 4h, 6h, 12h, 1d, 3d, 1w'
+    )
     .option('-f, --fetch-symbols', 'fetch symbols, in code')
     .option(
       '-b, --rebuild-from-symbols',
@@ -531,15 +577,16 @@ async function main() {
   if (options.runSupertrend) {
     let results;
     const fnST = SuperTrend();
+    const filterFn = filterSupertrend(options.outputTimeframes);
 
-    // -s only
+    // -s only, all symbols
     if (options.runSupertrend === true) {
       results = await iterate(fnST)();
-      output(results);
+      output(results, filterFn);
     } else {
       // -s symbol
       results = await iterate(fnST)(options.runSupertrend);
-      output(results, options.runSupertrend);
+      output(results, filterFn, options.runSupertrend);
     }
   }
 
