@@ -320,7 +320,7 @@ async function fetchSymbols(symbols, resolutions) {
 //
 function iterate(filterFn) {
   return async function (symbols = SYMBOLS, resolutions = RESOLUTIONS) {
-    console.log(`//\n// Start processing ${filterFn.name}\n//`);
+    console.log(`Start processing ${filterFn.name}\n`);
     const result = await Promise.all(
       symbols.map(async (symbol) => {
         const tfs4symbol = await resolutions.reduce(
@@ -400,19 +400,32 @@ function filterSupertrend(
 
     if (timeframe === '4h') {
       if (series.at(last).trend === 1 && series.at(OneB4Last).trend === -1)
-        return true;
+        return 'buy';
 
       if (
         series.at(last).trend === 1 &&
         series.at(OneB4Last).trend === 1 &&
         series.at(TwoB4Last) === -1
       )
-        return true;
+        return 'buy';
+
+      if (series.at(last).trend === -1 && series.at(OneB4Last).trend === 1)
+        return 'sell';
+
+      if (
+        series.at(last).trend === -1 &&
+        series.at(OneB4Last).trend === -1 &&
+        series.at(TwoB4Last) === 1
+      )
+        return 'sell';
     }
 
     if (timeframe === '12h') {
       if (series.at(last).trend === 1 && series.at(OneB4Last).trend === -1)
-        return true;
+        return 'buy';
+
+      if (series.at(last).trend === -1 && series.at(OneB4Last).trend === 1)
+        return 'sell';
     }
 
     return false;
@@ -442,7 +455,8 @@ function filterSupertrend(
     const signals = timeframes.map((tf) => {
       const series = symbolResults[tf];
 
-      if (predicateFn(tf, series)) return { [tf]: 'buy' };
+      if (predicateFn(tf, series) === 'buy') return { [tf]: 'buy' };
+      else if (predicateFn(tf, series) === 'sell') return { [tf]: 'sell' };
       else return { [tf]: '' };
     });
 
@@ -458,6 +472,9 @@ function filterSupertrend(
 //
 //
 function SuperTrend(atrPeriod = 10, multiplier = 2) {
+  console.log(
+    `SuperTrend indicator, lookback: ${atrPeriod}, ATR multiplier: ${multiplier}`
+  );
   return function __supertrend(data) {
     const openDT = data.map((pt) => pt[0]);
     const closeDT = data.map((pt) => pt[6]);
@@ -633,7 +650,7 @@ async function main() {
       options.predicate,
       options.outputTimeframes
     );
-    console.log('==============', options.predicate);
+
     // -s only, all symbols
     if (options.runSupertrend === true) {
       results = await iterate(fnST)();
