@@ -263,6 +263,12 @@ async function fetchSymbols(symbols, resolutions) {
           } catch (err) {
             console.log(`fetchSymbols() :: Seeding ${symbol}, ${interval} ...`);
             fetchedData = await fetchData(symbol, interval, seedPeriod);
+            if (fetchedData.msg) {
+              console.log(
+                `fetchSymbols() :: Can't find symbol ${symbol}. ${fetchedData.msg}`
+              );
+              return false;
+            }
             checkpoint = `${Object.values(fetchedData).at(-1)[6]}`;
             didSeed = true;
           }
