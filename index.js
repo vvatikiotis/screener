@@ -350,66 +350,101 @@ function iterate(filterFn) {
 }
 
 //
+// Generic output function
 //
-//
-function output(
-  stResults, // results as we get them from our indicator
+function output({
+  results, // results as we get them from our indicator
   filterFn,
-  symbols = SYMBOLS
-  // resolutions = RESOLUTIONS
-) {
+  symbols = SYMBOLS,
+  filter = true,
+}) {
   symbols.forEach((symbol) => {
-    console.log(`===== ${symbol} =====`);
+    if (filter) {
+      const filtered = filterFn(symbol, results[symbol]);
 
-    const filtered = filterFn(stResults[symbol]);
-
-    console.log(filtered);
-    console.log();
+      if (filtered.signals.length !== 0) {
+        console.log(filtered);
+        console.log();
+      } else console.log(`symbol: ${symbol}: no signal`);
+    } else {
+      // just print supertrend series
+      console.log(`===== ${symbol} =====`);
+      console.log(results[symbol]);
+      console.log();
+    }
   });
-}
-
-//
-// filter SuperTrend results
-// LONG only filter
-// if latest trend is UP and previous is DOWN -> that's a pivot point.
-// if both (the default) 4h and 12h timeframes exhibit -> buy signal
-// NOTE: should be parametric but anyway, for now
-function predicate(series) {
-  const last = -1;
-  const OneB4Last = -2;
-  const TwoB4Last = -3;
-
-  if (series.at(last).trend === 1 && series.at(OneB4Last).trend === -1)
-    return true;
-
-  if (
-    series.at(last).trend === 1 &&
-    series.at(OneB4Last).trend === 1 &&
-    series.at(TwoB4Last) === -1
-  )
-    return true;
-
-  return false;
 }
 
 // that's the filterFn argument of output function
 // default timeframes are 4h and 12h
 function filterSupertrend(
+  predicateNo = 'p1',
   timeframes = RESOLUTIONS.map((r) => r.interval).filter(
     (tf) => tf === '4h' || tf === '12h'
   )
 ) {
-  return (symbolResults) => {
-    return timeframes
-      .map((tf) => {
-        const series = symbolResults[tf];
+  // filter SuperTrend results
+  // LONG only filter
+  // if latest trend is UP and previous is DOWN -> that's a pivot point.
+  // if both (the default) 4h and 12h timeframes exhibit, this is buy signal
+  const predicate1 = (timeframe, series) => {
+    const last = -1;
+    const OneB4Last = -2;
+    const TwoB4Last = -3;
 
-        // comment this and uncomment the return series to see just the results
-        if (predicate(series)) return [tf, 'buy'];
-        else return [tf, ''];
-        // return series;
-      })
-      .filter((r) => r[1] !== '');
+    if (timeframe === '4h') {
+      if (series.at(last).trend === 1 && series.at(OneB4Last).trend === -1)
+        return true;
+
+      if (
+        series.at(last).trend === 1 &&
+        series.at(OneB4Last).trend === 1 &&
+        series.at(TwoB4Last) === -1
+      )
+        return true;
+    }
+
+    if (timeframe === '12h') {
+      if (series.at(last).trend === 1 && series.at(OneB4Last).trend === -1)
+        return true;
+    }
+
+    return false;
+  };
+
+  const predicate2 = (timeframe, series) => {
+    console.log('---> p2 needs implementation');
+    return false;
+  };
+  const predicate3 = (timeframe, series) => {
+    console.log('--->  p3 needs implementation');
+    return false;
+  };
+
+  const predicateFn =
+    predicateNo === 'p1'
+      ? predicate1
+      : predicateNo === 'p2'
+      ? predicate2
+      : predicateNo === 'p3'
+      ? predicate3
+      : (timeframe, series) => {
+          console.log('---> this is a noop, Specify p1, p2 or p3 with -p');
+        };
+
+  return (symbol, symbolResults) => {
+    const signals = timeframes.map((tf) => {
+      const series = symbolResults[tf];
+
+      if (predicateFn(tf, series)) return { [tf]: 'buy' };
+      else return { [tf]: '' };
+    });
+
+    return {
+      symbol,
+      // signals,
+      signals: signals.filter((s) => Object.values(s)[0] !== ''),
+    };
   };
 }
 
@@ -553,7 +588,18 @@ async function main() {
       '-o --output-timeframes [timeframes...]',
       'specify which timeframes to show. Options: 4h, 6h, 12h, 1d, 3d, 1w'
     )
-    .option('-f, --fetch-symbols', 'fetch symbols, in code')
+    .option(
+      '-f, --filter',
+      'filter results (using a predicate), else show the supertrend series',
+      false
+    )
+    .option(
+      '-p --predicate [predicate]',
+      'select predicate. Options: p1, p2, p3. Read code',
+      'p1'
+    )
+
+    .option('-r, --fetch-symbols', 'fetch symbols, in code')
     .option(
       '-b, --rebuild-from-symbols',
       'rebuild checkpoints file from symbols data'
@@ -577,16 +623,24 @@ async function main() {
   if (options.runSupertrend) {
     let results;
     const fnST = SuperTrend();
-    const filterFn = filterSupertrend(options.outputTimeframes);
-
+    const filterFn = filterSupertrend(
+      options.predicate,
+      options.outputTimeframes
+    );
+    console.log('==============', options.predicate);
     // -s only, all symbols
     if (options.runSupertrend === true) {
       results = await iterate(fnST)();
-      output(results, filterFn);
+      output({ results, filterFn, filter: options.filter });
     } else {
       // -s symbol
       results = await iterate(fnST)(options.runSupertrend);
-      output(results, filterFn, options.runSupertrend);
+      output({
+        results,
+        filterFn,
+        symbols: options.runSupertrend,
+        filter: options.filter,
+      });
     }
   }
 
