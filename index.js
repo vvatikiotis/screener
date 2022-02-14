@@ -318,9 +318,9 @@ async function fetchSymbols(symbols, resolutions) {
 //
 //
 //
-function iterate(filterFn) {
+function runIndicator(indicatorFn, showAll = false) {
   return async function (symbols = SYMBOLS, resolutions = RESOLUTIONS) {
-    console.log(`Start processing ${filterFn.name}\n`);
+    console.log(`Start processing ${indicatorFn.name}\n`);
     const result = await Promise.all(
       symbols.map(async (symbol) => {
         const tfs4symbol = await resolutions.reduce(
@@ -334,9 +334,12 @@ function iterate(filterFn) {
             // Python? Amitrader? R? or just sync version?
 
             // https://stackoverflow.com/questions/41243468/javascript-array-reduce-with-async-await
+            const series = indicatorFn(data);
             return {
               ...(await memo),
-              [interval]: filterFn(data).slice(-GETLASTPERIODS[interval]),
+              [interval]: showAll
+                ? series
+                : series.slice(-GETLASTPERIODS[interval]),
             };
           },
           {}
@@ -595,7 +598,7 @@ function readSymbols() {
 }
 
 function testThings() {
-  console.log('testThings() :: Fill this with something');
+  console.log('testThings() :: This is a dummy test. Write something.');
 }
 
 //
@@ -615,13 +618,14 @@ async function main() {
   const program = new Command();
   program
     .option(
-      '-s, --run-supertrend [symbols...]',
+      '-s, --run-screener [symbols...]',
       'run supertrend on fetched symbols'
     )
     .option(
       '-o --output-timeframes [timeframes...]',
       'specify which timeframes to show. Options: 4h, 6h, 12h, 1d, 3d, 1w'
     )
+    .option('-a, --show-all', 'show all data points, do not trim', false)
     .option(
       '-f, --filter',
       'filter results (using a predicate), else show the supertrend series',
@@ -639,7 +643,7 @@ async function main() {
       'rebuild checkpoints file from symbols data'
     )
     .option('-c --check-integrity', 'check symbols timestamp order')
-    .option('-t --test', 'test/dry run things');
+    .option('-e --tEst', 'test/dry run things');
 
   program.parse();
 
@@ -654,7 +658,7 @@ async function main() {
   }
   if (options.checkIntegrity) await checkSymbolsIntegrity(SYMBOLS, RESOLUTIONS);
 
-  if (options.runSupertrend) {
+  if (options.runScreener) {
     let results;
     const fnST = SuperTrend();
     const filterFn = filterSupertrend(
@@ -663,8 +667,8 @@ async function main() {
     );
 
     // -s only, all symbols
-    if (options.runSupertrend === true) {
-      results = await iterate(fnST)();
+    if (options.runScreener === true) {
+      results = await runIndicator(fnST, options.showAll)();
       output({
         results,
         filterFn,
@@ -673,18 +677,18 @@ async function main() {
       });
     } else {
       // -s symbol
-      results = await iterate(fnST)(options.runSupertrend);
+      results = await runIndicator(fnST, options.showAll)(options.runScreener);
       output({
         results,
         filterFn,
         timeframes: options.outputTimeframes,
-        symbols: options.runSupertrend,
+        symbols: options.runScreener,
         filter: options.filter,
       });
     }
   }
 
-  if (options.test) {
+  if (options.tEst) {
     testThings();
   }
 }
