@@ -64,11 +64,11 @@ const I2SECS = {
 // Number of bars we are intereted in, per timeframe
 // Used *only* in output
 const GETLASTPERIODS = {
-  '1w': 4,
-  '3d': 2,
-  '1d': 3,
-  '12h': 6,
-  '6h': 10,
+  '1w': 5,
+  '3d': 5,
+  '1d': 5,
+  '12h': 8,
+  '6h': 12,
   '4h': 14,
 };
 // End HACK
@@ -361,6 +361,7 @@ function iterate(filterFn) {
 function output({
   results, // results as we get them from our indicator
   filterFn,
+  timeframes = RESOLUTIONS.map((r) => r.interval), // used only when no filtering
   symbols = SYMBOLS,
   filter = true,
 }) {
@@ -375,7 +376,17 @@ function output({
     } else {
       // just print supertrend series
       console.log(`===== ${symbol} =====`);
-      console.log(results[symbol]);
+
+      // this to print only specified timeframes
+      const clone = ((timeframes, symResults) => {
+        return timeframes.reduce((acc, tf) => {
+          acc[tf] = symResults[tf];
+
+          return acc;
+        }, {});
+      })(timeframes, results[symbol]);
+
+      console.log(clone);
       console.log();
     }
   });
@@ -654,13 +665,19 @@ async function main() {
     // -s only, all symbols
     if (options.runSupertrend === true) {
       results = await iterate(fnST)();
-      output({ results, filterFn, filter: options.filter });
+      output({
+        results,
+        filterFn,
+        filter: options.filter,
+        timeframes: options.outputTimeframes,
+      });
     } else {
       // -s symbol
       results = await iterate(fnST)(options.runSupertrend);
       output({
         results,
         filterFn,
+        timeframes: options.outputTimeframes,
         symbols: options.runSupertrend,
         filter: options.filter,
       });
