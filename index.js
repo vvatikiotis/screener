@@ -49,10 +49,12 @@ const RESOLUTIONS = [
   { interval: '12h', seedPeriod: 800 },
   { interval: '6h', seedPeriod: 900 },
   { interval: '4h', seedPeriod: 950 },
+  { interval: '1h', seedPeriod: 950 },
 ];
 // Seconds in a given timeframe
 // Used to calculate the update diff
 const I2SECS = {
+  '1h': 3600,
   '4h': 14400,
   '6h': 21600,
   '12h': 43200,
@@ -70,6 +72,7 @@ const GETLASTPERIODS = {
   '12h': 8,
   '6h': 12,
   '4h': 14,
+  '1h': 14,
 };
 // End HACK
 // -----------------------------------------------------
@@ -396,12 +399,11 @@ function output({
 }
 
 // that's the filterFn argument of output function
-// default timeframes are 4h and 12h
+// was: default timeframes are 4h and 12h
+// current: all timeframes
 function filterSupertrend(
   predicateNo = 'p1',
-  timeframes = RESOLUTIONS.map((r) => r.interval).filter(
-    (tf) => tf === '4h' || tf === '12h'
-  )
+  timeframes = RESOLUTIONS.map((r) => r.interval)
 ) {
   // filter SuperTrend results
   // LONG only filter
