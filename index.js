@@ -383,30 +383,43 @@ function filterSupertrend(
   // filter SuperTrend results
   // LONG only filter
   // if latest trend is UP and previous is DOWN -> that's a pivot point.
-  // if both (the default) 4h and 12h timeframes exhibit, this is buy signal
+  // if both (the default) 4h, 12h and 1d timeframes exhibit, this is buy signal
   const predicate1 = (timeframe, series) => {
     const last = -1;
     const OneB4Last = -2;
     const TwoB4Last = -3;
+    const ThreeB4Last = -4;
 
     if (timeframe === '4h') {
       if (series.at(last).trend === 1 && series.at(OneB4Last).trend === -1)
         return 'buy';
-
       if (
         series.at(last).trend === 1 &&
         series.at(OneB4Last).trend === 1 &&
         series.at(TwoB4Last) === -1
       )
         return 'buy';
+      if (
+        series.at(last).trend === 1 &&
+        series.at(OneB4Last).trend === 1 &&
+        series.at(TwoB4Last) === 1 &&
+        series.at(ThreeB4Last) === -1
+      )
+        return 'buy';
 
       if (series.at(last).trend === -1 && series.at(OneB4Last).trend === 1)
         return 'sell';
-
       if (
         series.at(last).trend === -1 &&
         series.at(OneB4Last).trend === -1 &&
         series.at(TwoB4Last) === 1
+      )
+        return 'sell';
+      if (
+        series.at(last).trend === -1 &&
+        series.at(OneB4Last).trend === -1 &&
+        series.at(TwoB4Last) === -1 &&
+        series.at(ThreeB4Last) === 1
       )
         return 'sell';
     }
@@ -414,8 +427,40 @@ function filterSupertrend(
     if (timeframe === '12h') {
       if (series.at(last).trend === 1 && series.at(OneB4Last).trend === -1)
         return 'buy';
+      if (
+        series.at(last).trend === 1 &&
+        series.at(OneB4Last).trend === 1 &&
+        series.at(TwoB4Last).trend === -1
+      )
+        return 'buy';
 
       if (series.at(last).trend === -1 && series.at(OneB4Last).trend === 1)
+        return 'sell';
+      if (
+        series.at(last).trend === -1 &&
+        series.at(OneB4Last).trend === -1 &&
+        series.at(TwoB4Last).trend === 1
+      )
+        return 'sell';
+    }
+
+    if (timeframe === '1d') {
+      if (series.at(last).trend === 1 && series.at(OneB4Last).trend === -1)
+        return 'buy';
+      if (
+        series.at(last).trend === 1 &&
+        series.at(OneB4Last).trend === 1 &&
+        series.at(TwoB4Last).trend === -1
+      )
+        return 'buy';
+
+      if (series.at(last).trend === -1 && series.at(OneB4Last).trend === 1)
+        return 'sell';
+      if (
+        series.at(last).trend === -1 &&
+        series.at(OneB4Last).trend === -1 &&
+        series.at(TwoB4Last).trend === 1
+      )
         return 'sell';
     }
 
