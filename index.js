@@ -298,7 +298,7 @@ async function fetchSymbols(symbols, resolutions) {
 //
 function runIndicator(indicatorFn, showAll = false) {
   return async function (symbols = SYMBOLS, resolutions = RESOLUTIONS) {
-    console.log(`Start processing ${indicatorFn.name}\n`);
+    console.log(`Running  ${indicatorFn.name}\n`);
     const result = await Promise.all(
       symbols.map(async (symbol) => {
         const tfs4symbol = await resolutions.reduce(
@@ -509,7 +509,7 @@ function filterSupertrend(
 //
 function SuperTrend(atrPeriod = 10, multiplier = 2) {
   console.log(
-    `SuperTrend indicator, lookback: ${atrPeriod}, ATR multiplier: ${multiplier}`
+    `SuperTrend indicator primed: lookback: ${atrPeriod}, ATR multiplier: ${multiplier}`
   );
   return function __supertrend(data) {
     const openDT = data.map((pt) => pt[0]);
