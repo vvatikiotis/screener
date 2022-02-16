@@ -8,36 +8,11 @@ import Indicators from 'technicalindicators';
 import { exit } from 'process';
 
 let SYMBOLS = [];
-// put this in symbol.list
-// one pair per line
+// put one ticker per line in symbol.list
 // example:
 // BTCUSDT
 // ETHUSDT
 // ... and so on
-
-// TODO: remove this
-// const SYMBOLS = [
-//   'BTCUSDT',
-//   'ETHUSDT',
-//   'SOLUSDT',
-//   'AVAXUSDT',
-//   'LUNAUSDT',
-//   'DOTUSDT',
-//   'ADAUSDT',
-//   'ATOMUSDT',
-//   'ONEUSDT',
-//   'BNBUSDT',
-//   'EGLDUSDT',
-//   'LINKUSDT',
-//   'FTMUSDT',
-//   'NEARUSDT',
-//   'ZILUSDT',
-//   'MATICUSDT',
-//   'DUSKUSDT',
-//   'SYSUSDT',
-//   'CRVUSDT',
-//   'AAVEUSDT',
-// ];
 
 // -----------------------------------------------------
 // HACK these and you are ready to go
