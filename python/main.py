@@ -3,22 +3,16 @@ import pandas as pd
 import csv
 import pandas_ta as ta
 import matplotlib.pyplot as plt
-import datetime
-
-# amount=input(10000, "Amount in trading account")
-# alen=input(200, "Lookback ATR Period")
-# days=input(defval=365, title="Trading days in a year (for crypto)")
-
-# // BFTB = amount / close * ta.sma(ta.atr(1), alen) / 100 === amount / close * ta.sma(ta.tr(false), alen) / 100
-# BFTB = amount / close * ta.sma(ta.tr(false), alen) / 100
-# YearHigh = ta.highest(BFTB, days)
-# YearLow = ta.lowest(BFTB, days)
+import os
+from multiprocessing import Pool
+from termcolor import colored
 
 
-def bang_for_buck(df):
+def bang_for_buck(df, symbol, timeframe):
     amount = 10000
     days_in_year = 365
-    lookback = 200
+    l = len(df)
+    lookback = 200 if l >= 200 else l
     bang_4_buck = (
         (amount / df["close"])
         * ta.sma(
@@ -27,18 +21,20 @@ def bang_for_buck(df):
         )
         / 100
     )
-    print("Bang for the Back: %s" % (bang_4_buck.tail(1).to_string(index=False)))
+    log = "%s %s: " % (symbol, timeframe)
+    log += (
+        "Bang for the Back: "
+        + colored(bang_4_buck.tail(1).to_string(index=False), "cyan")
+        + ", "
+    )
 
     highB4B = bang_4_buck.tail(days_in_year).max()
     lowB4B = bang_4_buck.tail(days_in_year).min()
-    print("BtfB high: %s" % (highB4B))
-    print("BtfB low: %s" % (lowB4B))
-    # // BFTB = amount / close * ta.sma(ta.atr(1), alen) / 100 === amount / close * ta.sma(ta.tr(false), alen) / 100
-    # YearHigh = ta.highest(BFTB, days)
-    # YearLow = ta.lowest(BFTB, days)
+    log += "BtfB high: %s, " % (highB4B)
+    log += "BtfB low: %s" % (lowB4B)
+    print(log)
 
-    plt.figure()
-    # df.plot(x=df["close_time"], y=bang_4_buck)
+    return [bang_4_buck, highB4B, lowB4B]
 
 
 def prepare_dataframe(data):
@@ -56,24 +52,29 @@ def prepare_dataframe(data):
         float
     )
     df["number_of_trades"] = df["number_of_trades"].astype(int)
+
     return df
 
 
-def main():
-    file = "../symbols/csv/BTCUSDT_1d.csv"
-    with open(file, "r") as csvfile:
+def run(filename):
+    path = "../symbols/csv/" + filename
+    with open(path, "r") as csvfile:
         csv_dict_reader = csv.DictReader(csvfile, delimiter=",")
         data = list(csv_dict_reader)
-    # headers = ["open_time", "open", "high", "low", "close", "volume", "close_time", "quote_asset_volume",
-    #            "number_of_trades", "taker_buy_base_asset_volume", "taker_buy_quote_asset_volume", "ignore"]
-    # dtypes = {
-    #     "open_time": str, "open": 'float', "high": float, "low": float, "close": float, "volume": int, "close_time": str, "quote_asset_volume": int, "number_of_trades": int, "taker_buy_base_asset_volume": int, "taker_buy_quote_asset_volume": int, "ignore": int
-    # }
-    # parse_dates = ['open_time', 'close_time']
-    # data = pd.read_csv(file, sep=',', header=None,
-    #                    names=headers, dtype=dtypes, parse_dates=parse_dates)
+
     df = prepare_dataframe(data)
-    bang_for_buck(df)
+    [name, _] = filename.split(".")
+    [symbol, timeframe] = name.split("_")
+    bang_for_buck(df, symbol, timeframe)
+
+
+def main():
+    dir = "../symbols/csv"
+    filenames = [f for f in os.listdir(dir) if f.endswith(".csv")]
+    pool = Pool(8)
+
+    # process only 1d
+    pool.map(run, filter(lambda f: f.split(".")[0].split("_")[1] == "1d", filenames))
 
 
 if __name__ == "__main__":
