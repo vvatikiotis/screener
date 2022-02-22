@@ -12,7 +12,7 @@ do
         filenameWext=${f##*/}
         filename=${filenameWext%%.*}
         echo $filename
-        cat $f | jq -r '["Open_time","Open","High","Low","Close","Volume","Close_time","Quote_asset_volume","Number_of_trades","Taker_buy_base_asset_volume","Taker_buy_quote_asset_volume","Ignore"], .[]|@csv' > ../symbols/csv/${filename}.csv
+        cat $f | jq -r '["open_time","open","high","low","close","volume","close_time","quote_asset_volume","number_of_trades","taker_buy_base_asset_volume","taker_buy_quote_asset_volume","ignore"], .[]|@csv' > ../symbols/csv/${filename}.csv
     fi
 done
 
