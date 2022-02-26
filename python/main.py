@@ -37,6 +37,72 @@ def bang_for_buck(df, symbol, timeframe):
     return [bang_4_buck, highB4B, lowB4B]
 
 
+def SuperTrend(df, length=10, multiplier=2):
+    def filter_supertrend(df, symbol, timeframe):
+        # several predicates can be defined
+        log = ""
+
+        def predicate1(df):
+            last = -1
+            one_b4_last = -2
+            two_b4_last = -3
+            three_b4_last = -4
+            direction = lambda pos: df.iloc[pos][
+                1
+            ]  # 1 = position of direction in the series
+
+            if (
+                direction(one_b4_last) == -1
+                and direction(last) == 1
+                or direction(two_b4_last) == -1
+                and direction(one_b4_last) == 1
+                and direction(last) == 1
+                or direction(three_b4_last) == -1
+                and direction(two_b4_last) == 1
+                and direction(one_b4_last) == 1
+                and direction(last) == 1
+            ):
+                return "buy"
+            if (
+                direction(one_b4_last) == 1
+                and direction(last) == -1
+                or direction(two_b4_last) == 1
+                and direction(one_b4_last) == -1
+                and direction(last) == -1
+                or direction(three_b4_last) == 1
+                and direction(two_b4_last) == -1
+                and direction(one_b4_last) == -1
+                and direction(last) == -1
+            ):
+                return "sell"
+
+            return False
+
+        if p := predicate1(df):
+            log += f"{timeframe}: {p}"
+
+        return log
+
+    ta_series = ta.supertrend(df["high"], df["low"], df["close"], length, multiplier)
+
+    return [ta_series, filter_supertrend]
+
+    #  TODO: Pine supertrend is optimised! Do it!
+    #
+    # def _supertrend(df):
+    #     src = (df["open"] + df["close"]) / 2
+    #     atr = ta.atr(df["high"], df["low"], df["close"], length=atr_period, talib=True)
+
+    #     bot = src - multiplier * atr
+    #     print(bot)
+    #     bot1 = bot.shift(1) if (not bot.shift(1).isnull()) else bot
+    #     # bot = max(bot, bot1) if df["close"].shift(1) > bot1 else bot
+    #     # //up1 = nz(up[1], up)
+    #     # up := close[1] > up1 ? math.max(up, up1) : up
+
+    # return _supertrend
+
+
 def prepare_dataframe(data):
     df = pd.DataFrame(data)
     df["open_time"] = pd.to_datetime(arg=df["open_time"], unit="ms")
@@ -56,25 +122,59 @@ def prepare_dataframe(data):
     return df
 
 
-def run(filename):
-    path = "../symbols/csv/" + filename
-    with open(path, "r") as csvfile:
-        csv_dict_reader = csv.DictReader(csvfile, delimiter=",")
-        data = list(csv_dict_reader)
+def output(df, symbol, timeframe, filterFn=None, filter=True):
+    if filter:
+        return filterFn(df, symbol, timeframe)
 
-    df = prepare_dataframe(data)
-    [name, _] = filename.split(".")
-    [symbol, timeframe] = name.split("_")
-    bang_for_buck(df, symbol, timeframe)
+
+def run(symbol_timeframes):
+    [symbol, TFs] = symbol_timeframes
+    log = ""
+    for timeframe in TFs:
+        path = f"../symbols/csv/{symbol}_{timeframe}.csv"
+        with open(path, "r") as csvfile:
+            csv_dict_reader = csv.DictReader(csvfile, delimiter=",")
+            data = list(csv_dict_reader)
+
+        df = prepare_dataframe(data)
+        # bang_for_buck(df, symbol, timeframe)
+        [supertrend_df, filter_supertrend] = SuperTrend(df)
+        next = output(supertrend_df, symbol, timeframe, filterFn=filter_supertrend)
+        if next != "":
+            if log.startswith(symbol):
+                log += f", {next}"
+            else:
+                log += f"{symbol} {next}"
+
+    return log
 
 
 def main():
-    dir = "../symbols/csv"
-    filenames = [f for f in os.listdir(dir) if f.endswith(".csv")]
-    pool = Pool(8)
+    set_options()
 
-    # process only 1d
-    pool.map(run, filter(lambda f: f.split(".")[0].split("_")[1] == "1d", filenames))
+    dir = "../symbols/csv"
+    filenames = [f for f in sorted(os.listdir(dir)) if f.endswith(".csv")]
+    ticker_tf_group = group(filenames)
+    symbol_arr_of_tfs = [[k, v] for k, v in ticker_tf_group.items()]
+
+    # Enable it for many
+    pool = Pool(8)
+    logs = pool.map(run, symbol_arr_of_tfs)
+    pool.close()
+    pool.join()
+    print(list(filter(lambda l: l != "", logs)))
+
+
+def set_options():
+    pd.set_option("display.max_rows", None)
+
+
+def group(strings):
+    groups = {}
+    for s in map(lambda s: s.split(".")[0], strings):
+        prefix, remainder = s.split("_")
+        groups.setdefault(prefix, []).append(remainder)
+    return groups
 
 
 if __name__ == "__main__":
