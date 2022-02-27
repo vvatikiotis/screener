@@ -37,11 +37,9 @@ def bang_for_buck(df, symbol, timeframe):
     return [bang_4_buck, highB4B, lowB4B]
 
 
-def SuperTrend(df, length=10, multiplier=2):
-    def filter_supertrend(df, symbol, timeframe):
+def SuperTrend(df_dict, length=10, multiplier=2):
+    def filter_supertrend(tf_df_dict, symbol):
         # several predicates can be defined
-        log = ""
-
         def predicate1(df):
             last = -1
             one_b4_last = -2
@@ -78,14 +76,25 @@ def SuperTrend(df, length=10, multiplier=2):
 
             return False
 
-        if p := predicate1(df):
-            log += f"{timeframe}: {p}"
+        results = ""
+        for tf in tf_df_dict:
+            if p := predicate1(tf_df_dict[tf]):
+                # print(f'{symbol} {tf} {p}')
+                if results == "":
+                    results += f"{symbol}: {tf} {p}, "
+                else:
+                    results += f"{tf} {p}, "
 
-        return log
+        return results
 
-    ta_series = ta.supertrend(df["high"], df["low"], df["close"], length, multiplier)
+    symbol_tfs_dict = {}
+    for tf in df_dict:
+        df = df_dict[tf]
+        symbol_tfs_dict[tf] = ta.supertrend(
+            df["high"], df["low"], df["close"], length, multiplier
+        )
 
-    return [ta_series, filter_supertrend]
+    return [symbol_tfs_dict, filter_supertrend]
 
     #  TODO: Pine supertrend is optimised! Do it!
     #
@@ -122,14 +131,52 @@ def prepare_dataframe(data):
     return df
 
 
-def output(df, symbol, timeframe, filterFn=None, filter=True):
-    if filter:
-        return filterFn(df, symbol, timeframe)
+def color_and_print(text):
+    def color(t):
+        red = "\033[31m"
+        green = "\033[32m"
+        blue = "\033[34m"
+        reset = "\033[39m"
+        utterances = t.split()
+
+        if "sell" in utterances:
+            # figure out the list-indices of occurences of "one"
+            idxs = [i for i, x in enumerate(utterances) if x == "sell"]
+
+            # modify the occurences by wrapping them in ANSI sequences
+            for i in idxs:
+                utterances[i] = red + utterances[i] + reset
+
+        if "buy" in utterances:
+            # figure out the list-indices of occurences of "one"
+            idxs = [i for i, x in enumerate(utterances) if x == "buy"]
+
+            # modify the occurences by wrapping them in ANSI sequences
+            for i in idxs:
+                utterances[i] = green + utterances[i] + reset
+
+        # join the list back into a string and print
+        return " ".join(utterances)
+
+    if text != "":
+        print(color(text[:-2]))
 
 
-def run(symbol_timeframes):
-    [symbol, TFs] = symbol_timeframes
-    log = ""
+#
+# tf_dfs_dict: { '12h': supertrend_df, '4h': supertrend_df}
+#
+def output(tf_df_dict, symbol, filterFn=None, filter=True):
+    results = filterFn(tf_df_dict, symbol)
+    color_and_print(results)
+    return results
+
+
+#
+# symbol_timeframes_arr: ['BTCUSDT, ['12h', '4h', ...]]
+#
+def run(symbol_timeframes_arr):
+    [symbol, TFs] = symbol_timeframes_arr
+    process_dict = {}
     for timeframe in TFs:
         path = f"../symbols/csv/{symbol}_{timeframe}.csv"
         with open(path, "r") as csvfile:
@@ -137,16 +184,11 @@ def run(symbol_timeframes):
             data = list(csv_dict_reader)
 
         df = prepare_dataframe(data)
-        # bang_for_buck(df, symbol, timeframe)
-        [supertrend_df, filter_supertrend] = SuperTrend(df)
-        next = output(supertrend_df, symbol, timeframe, filterFn=filter_supertrend)
-        if next != "":
-            if log.startswith(symbol):
-                log += f", {next}"
-            else:
-                log += f"{symbol} {next}"
+        process_dict[timeframe] = df
 
-    return log
+    # bang_for_buck(df, symbol, timeframe)
+    [symbol_tfs_dict, filter_supertrend] = SuperTrend(process_dict)
+    output(symbol_tfs_dict, symbol, filterFn=filter_supertrend)
 
 
 def main():
@@ -154,15 +196,16 @@ def main():
 
     dir = "../symbols/csv"
     filenames = [f for f in sorted(os.listdir(dir)) if f.endswith(".csv")]
-    ticker_tf_group = group(filenames)
-    symbol_arr_of_tfs = [[k, v] for k, v in ticker_tf_group.items()]
+    symbol_tfs_dict = group(filenames)
+    symbol_tfs_arr = [[k, v] for k, v in symbol_tfs_dict.items()]
+    # print(symbol_tfs_arr)
 
     # Enable it for many
     pool = Pool(8)
-    logs = pool.map(run, symbol_arr_of_tfs)
+    pool.map(run, symbol_tfs_arr)
     pool.close()
-    pool.join()
-    print(list(filter(lambda l: l != "", logs)))
+    # res = pool.join()
+    # color_and_print(res)
 
 
 def set_options():
