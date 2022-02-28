@@ -130,6 +130,9 @@ def prepare_dataframe(data):
     return df
 
 
+#
+#
+# results = array of dicts
 def color_and_print(results):
     def color(t):
         red = "\033[31m"
@@ -199,11 +202,28 @@ def run(symbol_timeframes_arr):
 def main():
     set_options()
 
+    # helpers
+    def group(strings):
+        groups = {}
+        for s in map(lambda s: s.split(".")[0], strings):
+            prefix, remainder = s.split("_")
+            groups.setdefault(prefix, []).append(remainder)
+        return groups
+
+    def sort_lambda(v):
+        SORT_ORDER = {"1w": 0, "3d": 1, "1d": 2, "12h": 3, "6h": 4, "4h": 5, "1h": 6}
+        return SORT_ORDER[v]
+
+    # END helpers
+
     dir = "../symbols/csv"
-    filenames = [f for f in sorted(os.listdir(dir)) if f.endswith(".csv")]
+    filenames = [f for f in os.listdir(dir) if f.endswith(".csv")]
+    filenames.sort()  # sort works in-place
     symbol_tfs_dict = group(filenames)
+    for k, v in symbol_tfs_dict.items():
+        v.sort(key=sort_lambda)
+        symbol_tfs_dict[k] = v
     symbol_tfs_arr = [[k, v] for k, v in symbol_tfs_dict.items()]
-    # print(symbol_tfs_arr)
 
     # Enable it for many
     pool = Pool(8)
@@ -215,14 +235,6 @@ def main():
 
 def set_options():
     pd.set_option("display.max_rows", None)
-
-
-def group(strings):
-    groups = {}
-    for s in map(lambda s: s.split(".")[0], strings):
-        prefix, remainder = s.split("_")
-        groups.setdefault(prefix, []).append(remainder)
-    return groups
 
 
 if __name__ == "__main__":
