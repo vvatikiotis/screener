@@ -1,11 +1,12 @@
-import fs, { constants } from 'fs';
-import { readFile, writeFile, access } from 'fs/promises';
-import fetch from 'node-fetch';
-import { Command } from 'commander/esm.mjs';
-import promptly from 'promptly';
-import chalk from 'chalk';
-import Indicators from 'technicalindicators';
-import { exit } from 'process';
+import fs, { constants } from "fs";
+import { readFile, writeFile, access } from "fs/promises";
+import fetch from "node-fetch";
+import { Command } from "commander/esm.mjs";
+import promptly from "promptly";
+import chalk from "chalk";
+import Indicators from "technicalindicators";
+import { exit } from "process";
+import { spawn } from "child_process";
 
 let SYMBOLS = [];
 // put one ticker per line in symbol.list
@@ -18,48 +19,48 @@ let SYMBOLS = [];
 // HACK these and you are ready to go
 // timeframes and number of bars for seeding
 const RESOLUTIONS = [
-  { interval: '1w', seedPeriod: 500 },
-  { interval: '3d', seedPeriod: 500 },
-  { interval: '1d', seedPeriod: 500 },
-  { interval: '12h', seedPeriod: 800 },
-  { interval: '6h', seedPeriod: 900 },
-  { interval: '4h', seedPeriod: 950 },
-  { interval: '1h', seedPeriod: 950 },
+  { interval: "1w", seedPeriod: 500 },
+  { interval: "3d", seedPeriod: 500 },
+  { interval: "1d", seedPeriod: 500 },
+  { interval: "12h", seedPeriod: 800 },
+  { interval: "6h", seedPeriod: 900 },
+  { interval: "4h", seedPeriod: 950 },
+  { interval: "1h", seedPeriod: 950 },
 ];
 // Seconds in a given timeframe
 // Used to calculate the update diff
 const I2SECS = {
-  '1h': 3600,
-  '4h': 14400,
-  '6h': 21600,
-  '12h': 43200,
-  '1d': 86400,
-  '3d': 259200,
-  '1w': 604800,
+  "1h": 3600,
+  "4h": 14400,
+  "6h": 21600,
+  "12h": 43200,
+  "1d": 86400,
+  "3d": 259200,
+  "1w": 604800,
 };
 // TODO: maybe pass trim as an func argument?
 // Number of bars we are intereted in, per timeframe
 // Used *only* in output
 const GETLASTPERIODS = {
-  '1w': 5,
-  '3d': 5,
-  '1d': 5,
-  '12h': 8,
-  '6h': 12,
-  '4h': 14,
-  '1h': 14,
+  "1w": 5,
+  "3d": 5,
+  "1d": 5,
+  "12h": 8,
+  "6h": 12,
+  "4h": 14,
+  "1h": 14,
 };
 // End HACK
 // -----------------------------------------------------
-const SYMBOL_FILENAME = 'symbol.list';
-const DATA_PATH = './symbols';
+const SYMBOL_FILENAME = "symbol.list";
+const DATA_PATH = "./symbols";
 
 //
 //
 //
 async function fetchData(symbol, interval, limit) {
   const response = await fetch(
-    'https://api.binance.com/api/v3/klines?' +
+    "https://api.binance.com/api/v3/klines?" +
       new URLSearchParams({
         symbol,
         interval,
@@ -76,14 +77,14 @@ async function fetchData(symbol, interval, limit) {
 async function writeJsonFile(data, flag, filename) {
   try {
     let writeData;
-    if (flag === 'a') {
+    if (flag === "a") {
       const oldJsonData = await readJsonFile(filename);
       const oldData = JSON.parse(oldJsonData);
       writeData = oldData.concat(data);
     } else writeData = data;
 
     await writeFile(`${DATA_PATH}/${filename}`, JSON.stringify(writeData), {
-      flag: 'w',
+      flag: "w",
     });
   } catch (err) {
     console.error(`writeJsonFile() :: Error writing ${DATA_PATH}/${filename}`);
@@ -192,10 +193,10 @@ async function rebuildCheckpointsForSymbols(symbols, resolutions) {
 
   // write ticker close datetime
   console.log(
-    'rebuildCheckpointsForSymbols() :: Found following checkpoints\n',
+    "rebuildCheckpointsForSymbols() :: Found following checkpoints\n",
     checkpoints
   );
-  writeJsonFile(checkpoints, 'w', 'checkpoints.json');
+  writeJsonFile(checkpoints, "w", "checkpoints.json");
 
   return checkpoints;
 }
@@ -209,7 +210,7 @@ async function fetchSymbols(symbols, resolutions) {
     const checkpointsJson = await readJsonFile(`checkpoints.json`);
     checkpoints = JSON.parse(checkpointsJson);
   } catch (err) {
-    console.log('fetchSymbols() :: Cannot find checkpoints file', err);
+    console.log("fetchSymbols() :: Cannot find checkpoints file", err);
   }
   let nextCheckpoints = [];
 
@@ -272,7 +273,7 @@ async function fetchSymbols(symbols, resolutions) {
         }
 
         if (fetchedData) {
-          writeJsonFile(fetchedData, didSeed ? 'w' : 'a', symbolFname);
+          writeJsonFile(fetchedData, didSeed ? "w" : "a", symbolFname);
           checkpoint = `${Object.values(fetchedData).at(-1)[6]}`;
         }
 
@@ -289,7 +290,7 @@ async function fetchSymbols(symbols, resolutions) {
     console.log(
       `fetchSymbols() :: Writing next checkpoints, ${nextCheckpoints.length} symbol checkpoints`
     );
-    writeJsonFile(nextCheckpoints, 'w', 'checkpoints.json');
+    writeJsonFile(nextCheckpoints, "w", "checkpoints.json");
   }
 }
 
@@ -377,7 +378,7 @@ function output({
 // was: default timeframes are 4h and 12h
 // current: all timeframes
 function filterSupertrend(
-  predicateNo = 'p1',
+  predicateNo = "p1",
   timeframes = RESOLUTIONS.map((r) => r.interval)
 ) {
   // filter SuperTrend results
@@ -390,116 +391,116 @@ function filterSupertrend(
     const TwoB4Last = -3;
     const ThreeB4Last = -4;
 
-    if (timeframe === '4h') {
+    if (timeframe === "4h") {
       if (series.at(last).trend === 1 && series.at(OneB4Last).trend === -1)
-        return 'buy';
+        return "buy";
       if (
         series.at(last).trend === 1 &&
         series.at(OneB4Last).trend === 1 &&
         series.at(TwoB4Last) === -1
       )
-        return 'buy';
+        return "buy";
       if (
         series.at(last).trend === 1 &&
         series.at(OneB4Last).trend === 1 &&
         series.at(TwoB4Last) === 1 &&
         series.at(ThreeB4Last) === -1
       )
-        return 'buy';
+        return "buy";
 
       if (series.at(last).trend === -1 && series.at(OneB4Last).trend === 1)
-        return 'sell';
+        return "sell";
       if (
         series.at(last).trend === -1 &&
         series.at(OneB4Last).trend === -1 &&
         series.at(TwoB4Last) === 1
       )
-        return 'sell';
+        return "sell";
       if (
         series.at(last).trend === -1 &&
         series.at(OneB4Last).trend === -1 &&
         series.at(TwoB4Last) === -1 &&
         series.at(ThreeB4Last) === 1
       )
-        return 'sell';
+        return "sell";
     }
 
-    if (timeframe === '12h') {
+    if (timeframe === "12h") {
       if (series.at(last).trend === 1 && series.at(OneB4Last).trend === -1)
-        return 'buy';
+        return "buy";
       if (
         series.at(last).trend === 1 &&
         series.at(OneB4Last).trend === 1 &&
         series.at(TwoB4Last).trend === -1
       )
-        return 'buy';
+        return "buy";
 
       if (series.at(last).trend === -1 && series.at(OneB4Last).trend === 1)
-        return 'sell';
+        return "sell";
       if (
         series.at(last).trend === -1 &&
         series.at(OneB4Last).trend === -1 &&
         series.at(TwoB4Last).trend === 1
       )
-        return 'sell';
+        return "sell";
     }
 
-    if (timeframe === '1d') {
+    if (timeframe === "1d") {
       if (series.at(last).trend === 1 && series.at(OneB4Last).trend === -1)
-        return 'buy';
+        return "buy";
       if (
         series.at(last).trend === 1 &&
         series.at(OneB4Last).trend === 1 &&
         series.at(TwoB4Last).trend === -1
       )
-        return 'buy';
+        return "buy";
 
       if (series.at(last).trend === -1 && series.at(OneB4Last).trend === 1)
-        return 'sell';
+        return "sell";
       if (
         series.at(last).trend === -1 &&
         series.at(OneB4Last).trend === -1 &&
         series.at(TwoB4Last).trend === 1
       )
-        return 'sell';
+        return "sell";
     }
 
     return false;
   };
 
   const predicate2 = (timeframe, series) => {
-    console.log('---> p2 needs implementation');
+    console.log("---> p2 needs implementation");
     return false;
   };
   const predicate3 = (timeframe, series) => {
-    console.log('--->  p3 needs implementation');
+    console.log("--->  p3 needs implementation");
     return false;
   };
 
   const predicateFn =
-    predicateNo === 'p1'
+    predicateNo === "p1"
       ? predicate1
-      : predicateNo === 'p2'
+      : predicateNo === "p2"
       ? predicate2
-      : predicateNo === 'p3'
+      : predicateNo === "p3"
       ? predicate3
       : (timeframe, series) => {
-          console.log('---> this is a noop, Specify p1, p2 or p3 with -p');
+          console.log("---> this is a noop, Specify p1, p2 or p3 with -p");
         };
 
   return (symbol, symbolResults) => {
     const signals = timeframes.map((tf) => {
       const series = symbolResults[tf];
 
-      if (predicateFn(tf, series) === 'buy') return { [tf]: 'buy' };
-      else if (predicateFn(tf, series) === 'sell') return { [tf]: 'sell' };
-      else return { [tf]: '' };
+      if (predicateFn(tf, series) === "buy") return { [tf]: "buy" };
+      else if (predicateFn(tf, series) === "sell") return { [tf]: "sell" };
+      else return { [tf]: "" };
     });
 
     return {
       symbol,
       // signals,
-      signals: signals.filter((s) => Object.values(s)[0] !== ''),
+      signals: signals.filter((s) => Object.values(s)[0] !== ""),
     };
   };
 }
@@ -560,8 +561,8 @@ function SuperTrend(atrPeriod = 10, multiplier = 2) {
       //   sellSignal,
       // });
       return {
-        openDT: new Date(openDT[idx + atrPeriod]).toLocaleString('en-US'),
-        closeDT: new Date(closeDT[idx + atrPeriod]).toLocaleString('en-US'),
+        openDT: new Date(openDT[idx + atrPeriod]).toLocaleString("en-US"),
+        closeDT: new Date(closeDT[idx + atrPeriod]).toLocaleString("en-US"),
         bottom: bot1,
         top: top1,
         trend,
@@ -584,7 +585,7 @@ function prepFSStruct() {
   }
 
   if (!fs.existsSync(SYMBOL_FILENAME)) {
-    fs.writeFileSync(SYMBOL_FILENAME, '', { encoding: 'utf8' });
+    fs.writeFileSync(SYMBOL_FILENAME, "", { encoding: "utf8" });
     console.log(`prepFSStruct() :: ${SYMBOL_FILENAME} file has been created.`);
   }
 }
@@ -595,7 +596,7 @@ function prepFSStruct() {
 function readSymbols() {
   let list;
   try {
-    list = fs.readFileSync(SYMBOL_FILENAME, { encoding: 'utf8', flag: 'r' });
+    list = fs.readFileSync(SYMBOL_FILENAME, { encoding: "utf8", flag: "r" });
   } catch (err) {
     console.log(
       `readSymbols() :: Can not find symbols file ${SYMBOL_FILENAME}`,
@@ -612,7 +613,7 @@ function readSymbols() {
   }
 
   const symbols = list
-    .split('\n')
+    .split("\n")
     .filter((s) => s.length !== 0)
     .map((s) => s.trim());
 
@@ -620,7 +621,7 @@ function readSymbols() {
 }
 
 function testThings() {
-  console.log('testThings() :: This is a dummy test. Write something.');
+  console.log("testThings() :: This is a dummy test. Write something.");
 }
 
 //
@@ -633,53 +634,82 @@ async function main() {
   SYMBOLS = readSymbols();
 
   if (hasDuplicateSymbols(SYMBOLS)) {
-    console.log('main() :: exit code 1: Duplicate symbols');
+    console.log("main() :: exit code 1: Duplicate symbols");
     process.exit(1);
   }
 
   const program = new Command();
   program
     .option(
-      '-s, --run-screener [symbols...]',
-      'run supertrend on fetched symbols'
+      "-s, --run-screener [symbols...]",
+      "run supertrend on fetched symbols"
     )
     .option(
-      '-o --output-timeframes [timeframes...]',
-      'specify which timeframes to show. Options: 4h, 6h, 12h, 1d, 3d, 1w'
+      "-o --output-timeframes [timeframes...]",
+      "specify which timeframes to show. Options: 4h, 6h, 12h, 1d, 3d, 1w"
     )
-    .option('-a, --show-all', 'show all data points, do not trim', false)
+    .option("-a, --show-all", "show all data points, do not trim", false)
     .option(
-      '-f, --filter',
-      'filter results (using a predicate), else show the supertrend series',
+      "-f, --filter",
+      "filter results (using a predicate), else show the supertrend series",
       false
     )
     .option(
-      '-p --predicate [predicate]',
-      'select predicate. Options: p1, p2, p3. Read code',
-      'p1'
+      "-p --predicate [predicate]",
+      "select predicate. Options: p1, p2, p3. Read code",
+      "p1"
     )
 
-    .option('-r, --fetch-symbols', 'fetch symbols, in code')
+    .option("-r, --fetch-symbols", "fetch symbols, in code")
     .option(
-      '-b, --rebuild-from-symbols',
-      'rebuild checkpoints file from symbols data'
+      "-b, --rebuild-from-symbols",
+      "rebuild checkpoints file from symbols data"
     )
-    .option('-c --check-integrity', 'check symbols timestamp order')
-    .option('-e --tEst', 'test/dry run things');
+    .option("-c --check-integrity", "check symbols timestamp order")
+    .option("-e --tEst", "test/dry run things");
 
   program.parse();
 
   const options = program.opts();
 
-  if (options.fetchSymbols) fetchSymbols(SYMBOLS, RESOLUTIONS);
+  // fetching, checking and rebuilding
+  if (options.fetchSymbols) {
+    await fetchSymbols(SYMBOLS, RESOLUTIONS);
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    console.log("main() :: Waiting for a couple of seconds...");
+    await delay(2000);
+
+    const toCSV = spawn("/bin/bash", ["./tools/json-to-csv.sh"]);
+
+    toCSV.stdout.on("data", (data) => {
+      console.log(`${data}`);
+    });
+
+    toCSV.stderr.on("data", (data) => {
+      console.log(chalk.red(`main() :: stderr: ${data}`));
+    });
+
+    toCSV.on("error", (error) => {
+      console.log(chalk.red(`main() :: error: ${error.message}`));
+    });
+
+    toCSV.on("close", (code) => {
+      console.log(
+        `main() :: child process (json to csv bash script) exited with code ${code}`
+      );
+    });
+  }
+
   if (options.rebuildFromSymbols) {
     const answer = await promptly.confirm(
-      'Sure? Checkpoint file will be recreated:'
+      "Sure? Checkpoint file will be recreated:"
     );
     answer && rebuildCheckpointsForSymbols(SYMBOLS, RESOLUTIONS);
   }
+
   if (options.checkIntegrity) await checkSymbolsIntegrity(SYMBOLS, RESOLUTIONS);
 
+  // run screener
   if (options.runScreener) {
     let results;
     const fnST = SuperTrend();
