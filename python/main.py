@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import os
 from multiprocessing import Pool
 from termcolor import colored
+from tabulate import tabulate
 
 
 def bang_for_buck(df, symbol, timeframe):
@@ -76,19 +77,12 @@ def SuperTrend(df_dict, length=10, multiplier=2):
 
             return False
 
-        results = ""
+        results = {}
+        results["symbol"] = symbol
         for tf in tf_df_dict:
-            if p := predicate1(tf_df_dict[tf]):
-                # print(f'{symbol} {tf} {p}')
-                if results == "":
-                    results += f"{symbol}: {tf} {p}\t"
-                else:
-                    results += f"{tf} {p}\t"
-            else:
-                if results == "":
-                    results += f"{symbol}: {tf}\t"
-                else:
-                    results += f"{tf}\t"
+            p = predicate1(tf_df_dict[tf])
+            results[tf] = p
+            # results[tf] = p
 
         return results
 
@@ -136,7 +130,7 @@ def prepare_dataframe(data):
     return df
 
 
-def color_and_print(text):
+def color_and_print(results):
     def color(t):
         red = "\033[31m"
         green = "\033[32m"
@@ -163,17 +157,22 @@ def color_and_print(text):
         # join the list back into a string and print
         return " ".join(utterances)
 
-    if text != "":
-        print(color(text))
+    headers = dict([(x, x) for x in list(results[0].keys())])
+    for i, entry in enumerate(results):
+        for k, v in list(entry.items()):
+            if v == False:
+                results[i][k] = ""
+            elif v == "buy" or v == "sell":
+                results[i][k] = color(v)
+
+    print(tabulate(results, headers=headers, tablefmt="grid"))
 
 
 #
 # tf_dfs_dict: { '12h': supertrend_df, '4h': supertrend_df}
 #
 def output(tf_df_dict, symbol, filterFn=None, filter=True):
-    results = filterFn(tf_df_dict, symbol)
-    color_and_print(results)
-    return results
+    return filterFn(tf_df_dict, symbol)
 
 
 #
@@ -193,7 +192,8 @@ def run(symbol_timeframes_arr):
 
     # bang_for_buck(df, symbol, timeframe)
     [symbol_tfs_dict, filter_supertrend] = SuperTrend(process_dict)
-    output(symbol_tfs_dict, symbol, filterFn=filter_supertrend)
+
+    return output(symbol_tfs_dict, symbol, filterFn=filter_supertrend)
 
 
 def main():
@@ -207,10 +207,10 @@ def main():
 
     # Enable it for many
     pool = Pool(8)
-    pool.map(run, symbol_tfs_arr)
+    res = pool.map(run, symbol_tfs_arr)
     pool.close()
-    # res = pool.join()
-    # color_and_print(res)
+    pool.join()
+    color_and_print(res)
 
 
 def set_options():
