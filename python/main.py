@@ -81,9 +81,14 @@ def SuperTrend(df_dict, length=10, multiplier=2):
             if p := predicate1(tf_df_dict[tf]):
                 # print(f'{symbol} {tf} {p}')
                 if results == "":
-                    results += f"{symbol}: {tf} {p}, "
+                    results += f"{symbol}: {tf} {p}\t"
                 else:
-                    results += f"{tf} {p}, "
+                    results += f"{tf} {p}\t"
+            else:
+                if results == "":
+                    results += f"{symbol}: {tf}\t"
+                else:
+                    results += f"{tf}\t"
 
         return results
 
@@ -159,7 +164,7 @@ def color_and_print(text):
         return " ".join(utterances)
 
     if text != "":
-        print(color(text[:-2]))
+        print(color(text))
 
 
 #
