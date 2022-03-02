@@ -22,24 +22,24 @@ def bang_for_buck(df, symbol, timeframe):
         )
         / 100
     )
-    log = "%s %s: " % (symbol, timeframe)
-    log += (
-        "Bang for the Back: "
-        + colored(bang_4_buck.tail(1).to_string(index=False), "cyan")
-        + ", "
-    )
 
     highB4B = bang_4_buck.tail(days_in_year).max()
     lowB4B = bang_4_buck.tail(days_in_year).min()
-    log += "BtfB high: %s, " % (highB4B)
-    log += "BtfB low: %s" % (lowB4B)
-    print(log)
 
-    return [bang_4_buck, highB4B, lowB4B]
+    result = {
+        "symbol": symbol,
+        "results": {
+            "BtfB": bang_4_buck.tail(1).to_string(index=False),
+            "BtfB_High": highB4B,
+            "BtfB_Low": lowB4B,
+        },
+    }
+
+    return result
 
 
 def SuperTrend(df_dict, length=10, multiplier=2):
-    def filter_supertrend(tf_df_dict, symbol):
+    def screen_supertrend(tf_df_dict, symbol):
         # several predicates can be defined
         def predicate1(df):
             last = -1
@@ -50,30 +50,40 @@ def SuperTrend(df_dict, length=10, multiplier=2):
                 1
             ]  # 1 = position of direction in the series
 
+            #
+            if direction(one_b4_last) == -1 and direction(last) == 1:
+                return "Buy (0)"
+
             if (
-                direction(one_b4_last) == -1
-                and direction(last) == 1
-                or direction(two_b4_last) == -1
+                direction(two_b4_last) == -1
                 and direction(one_b4_last) == 1
                 and direction(last) == 1
-                or direction(three_b4_last) == -1
+            ):
+                return "Buy (-1)"
+
+            if (
+                direction(three_b4_last) == -1
                 and direction(two_b4_last) == 1
                 and direction(one_b4_last) == 1
                 and direction(last) == 1
             ):
-                return "buy"
+                return "Buy (-2)"
+
+            if direction(one_b4_last) == 1 and direction(last) == -1:
+                return "Sell (0)"
             if (
-                direction(one_b4_last) == 1
-                and direction(last) == -1
-                or direction(two_b4_last) == 1
+                direction(two_b4_last) == 1
                 and direction(one_b4_last) == -1
                 and direction(last) == -1
-                or direction(three_b4_last) == 1
+            ):
+                return "Sell (-1)"
+            if (
+                direction(three_b4_last) == 1
                 and direction(two_b4_last) == -1
                 and direction(one_b4_last) == -1
                 and direction(last) == -1
             ):
-                return "sell"
+                return "Sell (-2)"
 
             return False
 
@@ -82,7 +92,8 @@ def SuperTrend(df_dict, length=10, multiplier=2):
         for tf in tf_df_dict:
             p = predicate1(tf_df_dict[tf])
             results[tf] = p
-            # results[tf] = p
+            # if symbol == "BTCUSDT" and tf == "4h":
+            #     print(tf_df_dict[tf].tail(10))
 
         return results
 
@@ -93,7 +104,7 @@ def SuperTrend(df_dict, length=10, multiplier=2):
             df["high"], df["low"], df["close"], length, multiplier
         )
 
-    return [symbol_tfs_dict, filter_supertrend]
+    return [symbol_tfs_dict, screen_supertrend]
 
     #  TODO: Pine supertrend is optimised! Do it!
     #
@@ -141,17 +152,17 @@ def color_and_print(results):
         reset = "\033[39m"
         utterances = t.split()
 
-        if "sell" in utterances:
+        if "Sell" in utterances:
             # figure out the list-indices of occurences of "one"
-            idxs = [i for i, x in enumerate(utterances) if x == "sell"]
+            idxs = [i for i, x in enumerate(utterances) if x.startswith("Sell")]
 
             # modify the occurences by wrapping them in ANSI sequences
             for i in idxs:
                 utterances[i] = red + utterances[i] + reset
 
-        if "buy" in utterances:
+        if "Buy" in utterances:
             # figure out the list-indices of occurences of "one"
-            idxs = [i for i, x in enumerate(utterances) if x == "buy"]
+            idxs = [i for i, x in enumerate(utterances) if x.startswith("Buy")]
 
             # modify the occurences by wrapping them in ANSI sequences
             for i in idxs:
@@ -165,21 +176,24 @@ def color_and_print(results):
         for k, v in list(entry.items()):
             if v == False:
                 results[i][k] = ""
-            elif v == "buy" or v == "sell":
+            elif v.startswith("Buy") or v.startswith("Sell"):
                 results[i][k] = color(v)
 
-    print(tabulate(results, headers=headers, tablefmt="grid"))
+    print(tabulate(results, headers=headers, tablefmt="fancy_grid"))
 
 
 #
 # tf_dfs_dict: { '12h': supertrend_df, '4h': supertrend_df}
 #
-def output(tf_df_dict, symbol, filterFn=None, filter=True):
-    return filterFn(tf_df_dict, symbol)
+def parse(tf_df_dict, symbol, parseFn=None, filter=True):
+    p = parseFn(tf_df_dict, symbol)
+    # print(p)
+    return p
 
 
 #
 # symbol_timeframes_arr: ['BTCUSDT, ['12h', '4h', ...]]
+# processes one symbol in all its timeframes
 #
 def run(symbol_timeframes_arr):
     [symbol, TFs] = symbol_timeframes_arr
@@ -193,15 +207,18 @@ def run(symbol_timeframes_arr):
         df = prepare_dataframe(data)
         process_dict[timeframe] = df
 
-    # bang_for_buck(df, symbol, timeframe)
-    [symbol_tfs_dict, filter_supertrend] = SuperTrend(process_dict)
+    btfb = bang_for_buck(process_dict["1d"], symbol, "1d")
+    # print(btfb)
+    [symbol_tfs_dict, screen_supertrend] = SuperTrend(process_dict)
+    supertrend_output_10_2 = parse(symbol_tfs_dict, symbol, parseFn=screen_supertrend)
 
-    return output(symbol_tfs_dict, symbol, filterFn=filter_supertrend)
+    return supertrend_output_10_2
 
 
 def main():
     set_options()
 
+    ###################################
     # helpers
     def group(strings):
         groups = {}
@@ -215,6 +232,7 @@ def main():
         return SORT_ORDER[v]
 
     # END helpers
+    ###################################
 
     dir = "../symbols/csv"
     filenames = [f for f in os.listdir(dir) if f.endswith(".csv")]
