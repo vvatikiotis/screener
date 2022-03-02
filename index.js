@@ -19,13 +19,13 @@ let SYMBOLS = [];
 // HACK these and you are ready to go
 // timeframes and number of bars for seeding
 const RESOLUTIONS = [
-  { interval: "1w", seedPeriod: 500 },
-  { interval: "3d", seedPeriod: 500 },
-  { interval: "1d", seedPeriod: 500 },
-  { interval: "12h", seedPeriod: 800 },
-  { interval: "6h", seedPeriod: 900 },
-  { interval: "4h", seedPeriod: 950 },
-  { interval: "1h", seedPeriod: 950 },
+  { interval: "1w", seedPeriod: 999 },
+  { interval: "3d", seedPeriod: 999 },
+  { interval: "1d", seedPeriod: 999 },
+  { interval: "12h", seedPeriod: 999 },
+  { interval: "6h", seedPeriod: 999 },
+  { interval: "4h", seedPeriod: 999 },
+  { interval: "1h", seedPeriod: 999 },
 ];
 // Seconds in a given timeframe
 // Used to calculate the update diff
