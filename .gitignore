@@ -1,6 +1,7 @@
 node_modules
 
 **/symbols/**
+**/symbols.bak/**
 
 .history
 .vscode
