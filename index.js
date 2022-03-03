@@ -58,14 +58,11 @@ const DATA_PATH = "./symbols";
 //
 //
 //
-async function fetchData(symbol, interval, limit) {
+async function fetchData(symbol, interval, limit, startTime) {
+  const standardOpts = { symbol, interval, limit };
+  const opts = startTime ? { ...standardOpts, startTime } : standardOpts;
   const response = await fetch(
-    "https://api.binance.com/api/v3/klines?" +
-      new URLSearchParams({
-        symbol,
-        interval,
-        limit,
-      })
+    "https://api.binance.com/api/v3/klines?" + new URLSearchParams(opts)
   );
 
   return await response.json();
@@ -292,6 +289,92 @@ async function fetchSymbols(symbols, resolutions) {
     );
     writeJsonFile(nextCheckpoints, "w", "checkpoints.json");
   }
+}
+
+async function prependSymbolData(symbols = SYMBOLS) {
+  const resolutions = [
+    { interval: "1w" },
+    { interval: "3d" },
+    { interval: "1d" },
+    { interval: "12h" },
+    //
+    // DO NOT UNCOMMMENT for 6h, 4h, 1h
+    // BINANCE DATA IS NOT CLEAN
+    //
+    // { interval: "6h" },
+    // { interval: "4h" },
+    // { interval: "1h" },
+  ];
+
+  await Promise.all(
+    symbols.map(async (symbol) => {
+      await resolutions.reduce(async (memo, resol) => {
+        await memo;
+
+        const { interval } = resol;
+        const symbolFname = `${symbol}_${interval}.json`;
+        let json;
+        let firstSavedDate;
+
+        try {
+          await access(`${DATA_PATH}/${symbolFname}`, constants.F_OK);
+          json = await readJsonFile(symbolFname);
+          firstSavedDate = JSON.parse(json).at(0)[0];
+          console.log(
+            ` prependSymbolData() :: ${symbolFname} exists, getting first date from there.`
+          );
+        } catch (err) {
+          console.log(`prependSymbolData() :: exiting hard...`);
+          exit(5);
+        }
+
+        // fetch from sometime way back in the past to discover the ticker's
+        // very first candle timestamp
+        const prefetchJson = await fetchData(
+          symbol,
+          interval,
+          1,
+          "1302928000000"
+        );
+        const introDate = prefetchJson[0][0];
+
+        // we have all Binance data, return
+        if (firstSavedDate === introDate) {
+          console.log(
+            `prependSymbolData() :: we have all data for ${symbol} ${interval}, returning...`
+          );
+          return;
+        }
+
+        // haven't finished yet, there is more date to fetch
+        const maxLimit = 1000;
+        const lhs = firstSavedDate - I2SECS[interval] * 1000 * maxLimit;
+        const getBack =
+          lhs >= introDate
+            ? maxLimit
+            : (firstSavedDate - introDate) / 1000 / I2SECS[interval];
+        console.log(
+          `prependSymbolData() :: ----> Fetching ${symbol}: ${getBack} ${interval},  ...\n`
+        );
+
+        const fetchedData = await fetchData(
+          symbol,
+          interval,
+          getBack,
+          firstSavedDate - I2SECS[interval] * 1000 * getBack
+        );
+
+        if (fetchedData.msg)
+          console.log(`prependSymbolData() :: ${fetchedData.msg}`);
+        else {
+          const json2update = JSON.parse(json);
+          json2update.unshift(...fetchedData);
+
+          writeJsonFile(json2update, "w", symbolFname);
+        }
+      }, undefined);
+    })
+  );
 }
 
 //
@@ -742,6 +825,9 @@ async function main() {
 
   if (options.tEst) {
     testThings();
+
+    // leave it here. this shouldb'be exposed casually to the CLI:wq
+    prependSymbolData(SYMBOLS);
   }
 }
 
