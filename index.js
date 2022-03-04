@@ -117,6 +117,10 @@ async function checkSymbolsIntegrity(
   symbols = SYMBOLS,
   resolutions = RESOLUTIONS
 ) {
+  console.log(
+    `checkSymbolsIntegrity() :: Checking integrity for everything...`
+  );
+
   await Promise.all(
     symbols.map(async (symbol) => {
       await resolutions.reduce(async (memo, resol) => {
@@ -136,18 +140,20 @@ async function checkSymbolsIntegrity(
 
         const candles = JSON.parse(data);
         const diff = I2SECS[resol.interval] * 1000;
-        console.log(`Checking integrity for ${symbol}_${resol.interval}...`);
+        // console.log(`Checking integrity for ${symbol}_${resol.interval}...`);
         for (let i = 0; i < candles.length - 1; i++) {
           if (candles[i][0] + diff !== candles[i + 1][0]) {
+            const one = candles[i][0];
+            const two = candles[i + 1][0];
             console.log(
-              `checkSymbolsIntegrity() :: ${symbol}_${
-                resol.interval
-              }.json: Incorrect time diff between ${candles[i][0]} and ${
-                candles[i + 1][0]
-              } `
+              `${symbol}_${resol.interval}.json: Incorrect diff: ${new Date(
+                one
+              ).toLocaleString()} (${one}) -- ${new Date(
+                two
+              ).toLocaleString()} (${two}) `
             );
 
-            exit(4);
+            // exit(4);
           }
         }
       }, undefined);
@@ -293,14 +299,17 @@ async function fetchSymbols(symbols, resolutions) {
 
 async function prependSymbolData(symbols = SYMBOLS) {
   const resolutions = [
-    { interval: "1w" },
-    { interval: "3d" },
-    { interval: "1d" },
-    { interval: "12h" },
     //
-    // DO NOT UNCOMMMENT for 6h, 4h, 1h
-    // BINANCE DATA IS NOT CLEAN
+    // Keep this commented out. Uncomment only when we need more past data.
     //
+    // BEWARE: BINANCE data is not always clean. I hand edited some files.
+    //
+    // 3000 ticks should be enough for any TA we do, even for unstable formulas
+    //
+    // { interval: "1w" },
+    // { interval: "3d" },
+    // { interval: "1d" },
+    // { interval: "12h" },
     // { interval: "6h" },
     // { interval: "4h" },
     // { interval: "1h" },
@@ -334,7 +343,7 @@ async function prependSymbolData(symbols = SYMBOLS) {
           symbol,
           interval,
           1,
-          "1302928000000"
+          "1302928000000" // April 16, 2011 7:26:40 AM GMT+03:00 DST
         );
         const introDate = prefetchJson[0][0];
 
@@ -635,14 +644,6 @@ function SuperTrend(atrPeriod = 10, multiplier = 2) {
       const sellSignal = trend === -1 && trend1 === 1;
       trend1 = trend;
 
-      // console.log({
-      //   date: new Date(datetime[idx + atrPeriod]).toLocaleString('en-US'),
-      //   bot1,
-      //   top1,
-      //   trend,
-      //   buySignal,
-      //   sellSignal,
-      // });
       return {
         openDT: new Date(openDT[idx + atrPeriod]).toLocaleString("en-US"),
         closeDT: new Date(closeDT[idx + atrPeriod]).toLocaleString("en-US"),
@@ -702,7 +703,32 @@ function readSymbols() {
 
   return symbols;
 }
+//
+function toCSV() {
+  const toCSV = spawn("/bin/bash", ["./tools/json-to-csv.sh"]);
 
+  toCSV.stdout.on("data", (data) => {
+    console.log(`${data}`);
+  });
+
+  toCSV.stderr.on("data", (data) => {
+    console.log(chalk.red(`main() :: stderr: ${data}`));
+  });
+
+  toCSV.on("error", (error) => {
+    console.log(chalk.red(`main() :: error: ${error.message}`));
+  });
+
+  toCSV.on("close", (code) => {
+    console.log(
+      `main() :: child process (json to csv bash script) exited with code ${code}`
+    );
+  });
+}
+
+//
+//
+//
 function testThings() {
   console.log("testThings() :: This is a dummy test. Write something.");
 }
@@ -725,25 +751,30 @@ async function main() {
   program
     .option(
       "-s, --run-screener [symbols...]",
-      "run supertrend on fetched symbols"
+      "(DEPRECATED, run python). Run supertrend on fetched symbols"
     )
     .option(
       "-o --output-timeframes [timeframes...]",
-      "specify which timeframes to show. Options: 4h, 6h, 12h, 1d, 3d, 1w"
+      "(DEPRECATED, run python). Specify which timeframes to show. Options: 4h, 6h, 12h, 1d, 3d, 1w"
     )
     .option("-a, --show-all", "show all data points, do not trim", false)
     .option(
       "-f, --filter",
-      "filter results (using a predicate), else show the supertrend series",
+      "(DEPRECATED, run python). Filter results (using a predicate), else show the supertrend series",
       false
     )
     .option(
       "-p --predicate [predicate]",
-      "select predicate. Options: p1, p2, p3. Read code",
+      "(DEPRECATED, run python). Select predicate. Options: p1, p2, p3. Read code",
       "p1"
     )
 
+    //
+    // this script should be used only with following switches,
+    // for fetching and checking datapoint only.
+    //
     .option("-r, --fetch-symbols", "fetch symbols, in code")
+    .option("-x, --convert-CSV", "convert files to csv")
     .option(
       "-b, --rebuild-from-symbols",
       "rebuild checkpoints file from symbols data"
@@ -758,29 +789,6 @@ async function main() {
   // fetching, checking and rebuilding
   if (options.fetchSymbols) {
     await fetchSymbols(SYMBOLS, RESOLUTIONS);
-    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-    console.log("main() :: Waiting for a couple of seconds...");
-    await delay(2000);
-
-    const toCSV = spawn("/bin/bash", ["./tools/json-to-csv.sh"]);
-
-    toCSV.stdout.on("data", (data) => {
-      console.log(`${data}`);
-    });
-
-    toCSV.stderr.on("data", (data) => {
-      console.log(chalk.red(`main() :: stderr: ${data}`));
-    });
-
-    toCSV.on("error", (error) => {
-      console.log(chalk.red(`main() :: error: ${error.message}`));
-    });
-
-    toCSV.on("close", (code) => {
-      console.log(
-        `main() :: child process (json to csv bash script) exited with code ${code}`
-      );
-    });
   }
 
   if (options.rebuildFromSymbols) {
@@ -823,10 +831,14 @@ async function main() {
     }
   }
 
+  if (options.convertCSV) {
+    toCSV();
+  }
+
   if (options.tEst) {
     testThings();
 
-    // leave it here. this shouldb'be exposed casually to the CLI:wq
+    // leave it here. this shouldn't be exposed casually to the CLI
     prependSymbolData(SYMBOLS);
   }
 }
