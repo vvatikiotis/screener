@@ -2,26 +2,23 @@
 Hopes to be a programmable screener if it grows up
 
 ### Installation
-1. `brew install node`. I use v17.3.0
+1. `brew install node TA-Lib`. I use v17.3.0
 2. `git clone`.
 3. `npm install` within cloned repo
+4. `cd python`
+5. `pip3 install -r requirements`
 
-### Usage
+
+
+### Fetching data (node script usage)
 1. `node index.js -h`
-1. Fetch symbols: `node ./index.js -r`
-2. Run SuperTrend for a single symbol: `node ./index.js -s BTCUSDT`
-   1. or, run SuperTrend for all specified symbols: `node ./index.js -s`
-3. `-o` specifies timeframes. The script analyses 4h, 6h, 12h and 1d, by default.
-4. `-a` shows the complete analysed time series. Otherwise, by default, the series is trimmed to the latest data points.
-5. `-f` filters the series using an already defined predicate, p1.
-6. `-p` specifies a predicates. p1, p2 and p3 are the predicates defined in code. Only p1 is implemented. p2 and p3 are just placeholders
-7. Specified symbols are in a separate file, `symbol.list`. One symbol per line.
+1. Fetch symbols, `node ./index.js -r`
+1. Check for integrity of data files, `node ./index.js -c`
+2. Convert JSON data files to CSV, `node ./index.js -x`
+3. Rebuild checkpoint file, `node ./index.js -b`
+4. *NB don't use it lightly, Binance data is not always clean so if you do this you almost certainly will have to clean them, by hand* : Get more past data,`node ./index.js -b`
 
-Examples:
-- `node ./index.js -s -o 1d -f`: run SuperTrend on all symbols, in 1d, filter it using p1
-- `node ./index.js -s BTCUSDT -o 4h -a`: run SuperTrend for BTCUSDT, on 4h and show the entire series. No filtering
 
-### Rationale
-
-- trend === -1 -> downtrend, trend === 1, uptrend.
-- p1 predicate is looking for reversal. If previous trend is down and current trend is up (and vice versa), then a buy (sell) signal is produced.
+### TA usage (python script)
+1. `cd python`
+2. `python main.py`
