@@ -12,7 +12,7 @@ Hopes to be a programmable screener if it grows up
 
 ### Fetching data (node script usage)
 1. `node index.js -h`
-1. Fetch symbols, `node ./index.js -r`
+1. Fetch symbols and convert them to csv. `node ./index.js -r -x`. Conversion to csv is necessary for the python screener.
 1. Check for integrity of data files, `node ./index.js -c`
 2. Convert JSON data files to CSV, `node ./index.js -x`
 3. Rebuild checkpoint file, `node ./index.js -b`

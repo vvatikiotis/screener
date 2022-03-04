@@ -4,6 +4,8 @@ import csv
 import pandas_ta as ta
 import matplotlib.pyplot as plt
 import os
+import sys
+import argparse
 from multiprocessing import Pool
 from termcolor import colored
 from tabulate import tabulate
@@ -13,6 +15,9 @@ from numpy import nan as npNaN
 from pandas_ta.overlap import hl2
 from pandas_ta.volatility import atr
 from pandas_ta.utils import get_offset, verify_series
+
+# our own
+import helpers
 
 
 def bang_for_buck(df, symbol, timeframe):
@@ -382,50 +387,84 @@ def run(symbol_timeframes_arr):
         df = prepare_dataframe(data)
         process_dict[timeframe] = df
 
-    btfb = bang_for_buck(process_dict["1d"], symbol, "1d")
+    # btfb = bang_for_buck(process_dict["1d"], symbol, "1d")
     # print(btfb)
     # supertrend_output_10_2 = ""
     # if symbol == "BTCUSDT": # test only this symbol
     [symbol_tfs_dict, screen_supertrend] = SuperTrend(process_dict)
     supertrend_output_10_2 = parse(symbol_tfs_dict, symbol, parseFn=screen_supertrend)
 
-    return supertrend_output_10_2
+    return [supertrend_output_10_2, symbol_tfs_dict]
 
 
 def main():
     set_options()
 
-    ###################################
-    # helpers
-    def group(strings):
-        groups = {}
-        for s in map(lambda s: s.split(".")[0], strings):
-            prefix, remainder = s.split("_")
-            groups.setdefault(prefix, []).append(remainder)
-        return groups
-
-    def sort_lambda(v):
-        SORT_ORDER = {"1w": 0, "3d": 1, "1d": 2, "12h": 3, "6h": 4, "4h": 5, "1h": 6}
-        return SORT_ORDER[v]
-
-    # END helpers
-    ###################################
+    PARSER = argparse.ArgumentParser()
+    PARSER.add_argument(
+        "-s", "--symbol", nargs="+", help="Run for symbol or list of symbols"
+    )
+    PARSER.add_argument(
+        "-t", "--timeframe", nargs="+", help="Run for timeframe or list of timeframes"
+    )
+    PARSER.add_argument(
+        "-ts",
+        "--time-series",
+        help="Show last ts rows from timeseries instead of TA results",
+    )
 
     dir = "../symbols/csv"
     filenames = [f for f in os.listdir(dir) if f.endswith(".csv")]
     filenames.sort()  # sort works in-place
-    symbol_tfs_dict = group(filenames)
+    symbol_tfs_dict = helpers.group(filenames)
     for k, v in symbol_tfs_dict.items():
-        v.sort(key=sort_lambda)
+        v.sort(key=helpers.sort_lambda)
         symbol_tfs_dict[k] = v
     symbol_tfs_arr = [[k, v] for k, v in symbol_tfs_dict.items()]
 
+    parsed_arguments = PARSER.parse_args(sys.argv[1:])
+    if parsed_arguments.symbol != None:
+        symbol_tfs_arr = list(
+            filter(lambda s: s[0] in parsed_arguments.symbol, symbol_tfs_arr)
+        )
+    if parsed_arguments.timeframe != None:
+        tfs = parsed_arguments.timeframe
+        symbol_tfs_arr = list(
+            map(
+                lambda s: [s[0], tfs],
+                symbol_tfs_arr,
+            )
+        )
+    # print(symbol_tfs_arr)
+
     # Enable it for many
     pool = Pool(8)
-    res = pool.map(run, symbol_tfs_arr)
+    results = pool.map(run, symbol_tfs_arr)
     pool.close()
     pool.join()
-    color_and_print(res)
+    output(results, parsed_arguments.time_series)
+
+
+#
+def output(results, last=10):
+    if last == None:
+        color_and_print(list(map(lambda r: r[0], results)))
+    else:
+        print_series(results, last)
+
+
+#
+# [
+# {symbol: BTCUSDT, 1d: False, 12h: Buy}, {1d:timeseries, 12h: timeseries},
+# {symbol: ETHUSDT, 1d: False, 12h: Buy}, {1d:timeseries, 12h: timeseries},
+# ]
+#
+def print_series(results, last):
+    for i, res in enumerate(results):
+        print(f'\n------------ {res[0]["symbol"]} ------------')
+        for tf in res[1]:
+            print(f"Timeframe: {tf}")
+            print(res[1][tf].tail(int(last)))
 
 
 def set_options():
