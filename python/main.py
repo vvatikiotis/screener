@@ -133,7 +133,7 @@ def pine_supertrend(
     return df
 
 
-#
+# N
 # implemented from Kivan-somthing TV indicator.
 # Same results as ta.supertrend
 # https://github.com/twopirllc/pandas-ta/issues/420
@@ -299,7 +299,11 @@ def SuperTrend(df_dict, length=10, multiplier=2):
             df["high"], df["low"], df["close"], length, multiplier
         )
 
-    return [symbol_tfs_dict, screen_supertrend]
+    return [
+        symbol_tfs_dict,
+        screen_supertrend,
+        f"Supertrend length: {length}, multiplier: {multiplier} ",
+    ]
 
 
 def prepare_dataframe(data):
@@ -319,6 +323,95 @@ def prepare_dataframe(data):
     df["number_of_trades"] = df["number_of_trades"].astype(int)
 
     return df
+
+
+#
+# tf_dfs_dict: { '12h': supertrend_df, '4h': supertrend_df}
+#
+def parse(tf_df_dict, symbol, parseFn=None, filter=True):
+    p = parseFn(tf_df_dict, symbol)
+    return p
+
+
+#
+# symbol_timeframes_arr: ['BTCUSDT, ['12h', '4h', ...]]
+# processes one symbol in all its timeframes
+#
+def run(symbol_timeframes_arr):
+    [symbol, TFs] = symbol_timeframes_arr
+    process_dict = {}
+    for timeframe in TFs:
+        path = f"../symbols/csv/{symbol}_{timeframe}.csv"
+        with open(path, "r") as csvfile:
+            csv_dict_reader = csv.DictReader(csvfile, delimiter=",")
+            data = list(csv_dict_reader)
+
+        df = prepare_dataframe(data)
+        process_dict[timeframe] = df
+
+    # btfb = bang_for_buck(process_dict["1d"], symbol, "1d")
+    # print(btfb)
+    [symbol_tfs_dict, screen_supertrend_fn, title] = SuperTrend(process_dict)
+    supertrend_output_10_2 = parse(
+        symbol_tfs_dict, symbol, parseFn=screen_supertrend_fn
+    )
+
+    return [supertrend_output_10_2, symbol_tfs_dict, title]
+
+
+def main():
+    set_options()
+
+    PARSER = argparse.ArgumentParser()
+    PARSER.add_argument(
+        "-s", "--symbol", nargs="+", help="Run for symbol or list of symbols"
+    )
+    PARSER.add_argument(
+        "-t", "--timeframe", nargs="+", help="Run for timeframe or list of timeframes"
+    )
+    PARSER.add_argument(
+        "-ts",
+        "--time-series",
+        help="Show last ts rows from timeseries instead of TA results",
+    )
+
+    dir = "../symbols/csv"
+    filenames = [f for f in os.listdir(dir) if f.endswith(".csv")]
+    filenames.sort()  # sort works in-place
+    symbol_tfs_dict = helpers.group(filenames)
+    for k, v in symbol_tfs_dict.items():
+        v.sort(key=helpers.sort_lambda)
+        symbol_tfs_dict[k] = v
+    symbol_tfs_arr = [[k, v] for k, v in symbol_tfs_dict.items()]
+
+    parsed_arguments = PARSER.parse_args(sys.argv[1:])
+    if parsed_arguments.symbol != None:
+        symbol_tfs_arr = list(
+            filter(lambda s: s[0] in parsed_arguments.symbol, symbol_tfs_arr)
+        )
+    if parsed_arguments.timeframe != None:
+        tfs = parsed_arguments.timeframe
+        symbol_tfs_arr = list(
+            map(
+                lambda s: [s[0], tfs],
+                symbol_tfs_arr,
+            )
+        )
+
+    # Enable it for many
+    pool = Pool(8)
+    results = pool.map(run, symbol_tfs_arr)
+    pool.close()
+    pool.join()
+    output(results, parsed_arguments.time_series)
+
+
+#
+def output(results, last=10):
+    if last == None:
+        color_and_print(list(map(lambda r: r[0], results)))
+    else:
+        print_series(results, last)
 
 
 #
@@ -363,104 +456,15 @@ def color_and_print(results):
 
 
 #
-# tf_dfs_dict: { '12h': supertrend_df, '4h': supertrend_df}
-#
-def parse(tf_df_dict, symbol, parseFn=None, filter=True):
-    p = parseFn(tf_df_dict, symbol)
-    # print(p)
-    return p
-
-
-#
-# symbol_timeframes_arr: ['BTCUSDT, ['12h', '4h', ...]]
-# processes one symbol in all its timeframes
-#
-def run(symbol_timeframes_arr):
-    [symbol, TFs] = symbol_timeframes_arr
-    process_dict = {}
-    for timeframe in TFs:
-        path = f"../symbols/csv/{symbol}_{timeframe}.csv"
-        with open(path, "r") as csvfile:
-            csv_dict_reader = csv.DictReader(csvfile, delimiter=",")
-            data = list(csv_dict_reader)
-
-        df = prepare_dataframe(data)
-        process_dict[timeframe] = df
-
-    # btfb = bang_for_buck(process_dict["1d"], symbol, "1d")
-    # print(btfb)
-    # supertrend_output_10_2 = ""
-    # if symbol == "BTCUSDT": # test only this symbol
-    [symbol_tfs_dict, screen_supertrend] = SuperTrend(process_dict)
-    supertrend_output_10_2 = parse(symbol_tfs_dict, symbol, parseFn=screen_supertrend)
-
-    return [supertrend_output_10_2, symbol_tfs_dict]
-
-
-def main():
-    set_options()
-
-    PARSER = argparse.ArgumentParser()
-    PARSER.add_argument(
-        "-s", "--symbol", nargs="+", help="Run for symbol or list of symbols"
-    )
-    PARSER.add_argument(
-        "-t", "--timeframe", nargs="+", help="Run for timeframe or list of timeframes"
-    )
-    PARSER.add_argument(
-        "-ts",
-        "--time-series",
-        help="Show last ts rows from timeseries instead of TA results",
-    )
-
-    dir = "../symbols/csv"
-    filenames = [f for f in os.listdir(dir) if f.endswith(".csv")]
-    filenames.sort()  # sort works in-place
-    symbol_tfs_dict = helpers.group(filenames)
-    for k, v in symbol_tfs_dict.items():
-        v.sort(key=helpers.sort_lambda)
-        symbol_tfs_dict[k] = v
-    symbol_tfs_arr = [[k, v] for k, v in symbol_tfs_dict.items()]
-
-    parsed_arguments = PARSER.parse_args(sys.argv[1:])
-    if parsed_arguments.symbol != None:
-        symbol_tfs_arr = list(
-            filter(lambda s: s[0] in parsed_arguments.symbol, symbol_tfs_arr)
-        )
-    if parsed_arguments.timeframe != None:
-        tfs = parsed_arguments.timeframe
-        symbol_tfs_arr = list(
-            map(
-                lambda s: [s[0], tfs],
-                symbol_tfs_arr,
-            )
-        )
-    # print(symbol_tfs_arr)
-
-    # Enable it for many
-    pool = Pool(8)
-    results = pool.map(run, symbol_tfs_arr)
-    pool.close()
-    pool.join()
-    output(results, parsed_arguments.time_series)
-
-
-#
-def output(results, last=10):
-    if last == None:
-        color_and_print(list(map(lambda r: r[0], results)))
-    else:
-        print_series(results, last)
-
-
-#
 # [
-# {symbol: BTCUSDT, 1d: False, 12h: Buy}, {1d:timeseries, 12h: timeseries},
-# {symbol: ETHUSDT, 1d: False, 12h: Buy}, {1d:timeseries, 12h: timeseries},
+# [{symbol: BTCUSDT, 1d: False, 12h: Buy}, {1d:timeseries, 12h: timeseries}, "indicator title"],
+# [{symbol: ETHUSDT, 1d: False, 12h: Buy}, {1d:timeseries, 12h: timeseries}, "indicator title"],
 # ]
 #
 def print_series(results, last):
     for i, res in enumerate(results):
+        indicator = res[2]
+        print(f"\n------------ {indicator} ------------")
         print(f'\n------------ {res[0]["symbol"]} ------------')
         for tf in res[1]:
             print(f"Timeframe: {tf}")
