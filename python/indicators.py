@@ -1,4 +1,6 @@
 # for custom supertrend implementation
+import numpy as np
+import pandas as pd
 from numpy import nan as npNaN
 from pandas_ta.overlap import hl2
 
