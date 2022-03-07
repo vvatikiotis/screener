@@ -834,10 +834,11 @@ async function main() {
   }
 
   if (options.convertCSV) {
-    const answer = await promptly.confirm(
-      "Will generate .csv files from .json. Proceed?"
-    );
-    answer && toCSV();
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    console.log("main() :: Will convert json to csv... Wait a bit...");
+    await delay(5000);
+
+    toCSV();
   }
 
   if (options.tEst) {
