@@ -11,7 +11,7 @@ do
         # bash expansion magic
         filenameWext=${f##*/}
         filename=${filenameWext%%.*}
-        echo "Will convert from $f to $DIR/symbols/csv/$filename.csv"
+        echo "Will convert: $f  ->  $DIR/symbols/csv/$filename.csv"
         cat $f | jq -r '["open_time","open","high","low","close","volume","close_time","quote_asset_volume","number_of_trades","taker_buy_base_asset_volume","taker_buy_quote_asset_volume","ignore"], .[]|@csv' > $DIR/symbols/csv/${filename}.csv
     fi
 done
