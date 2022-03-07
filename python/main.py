@@ -279,10 +279,10 @@ def color_and_print(results):
         # print_arrow = lambda tf, arg, v: color(arrow1d) if tf == arg else ""
         for tf, v in list(entry.items()):
             if v == False:
-                screenResults[i][tf] = color(arrow3d) if tf == "3d" else ""
+                screenResults[i][tf] = color(arrow1d) if tf == "1d" else ""
             elif v.startswith("Buy") or v.startswith("Sell"):
                 screenResults[i][tf] = (
-                    color(arrow3d + " " + v) if tf == "3d" else color(v)
+                    color(arrow1d + " " + v) if tf == "1d" else color(v)
                 )
 
     print(tabulate(screenResults, headers=headers, tablefmt="fancy_grid"))
