@@ -141,8 +141,8 @@ def prepare_dataframe(data):
 #
 # tf_dfs_dict: { '12h': supertrend_df, '4h': supertrend_df}
 #
-def parse(tf_df_dict, symbol, parseFn=None, filter=True):
-    p = parseFn(tf_df_dict, symbol)
+def screen(tf_df_dict, symbol, screenFn=None, filter=True):
+    p = screenFn(tf_df_dict, symbol)
     return p
 
 
@@ -165,8 +165,8 @@ def run(symbol_timeframes_arr):
     # btfb = bang_for_buck(process_dict["1d"], symbol, "1d")
     # print(btfb)
     [symbol_tfs_dict, screen_supertrend_fn, title] = SuperTrend(process_dict)
-    supertrend_output_10_2 = parse(
-        symbol_tfs_dict, symbol, parseFn=screen_supertrend_fn
+    supertrend_output_10_2 = screen(
+        symbol_tfs_dict, symbol, screenFn=screen_supertrend_fn
     )
 
     return [supertrend_output_10_2, symbol_tfs_dict, title]
@@ -222,15 +222,20 @@ def main():
 #
 def output(results, last=10):
     if last == None:
-        color_and_print(list(map(lambda r: r[0], results)))
+        color_and_print(results)
     else:
         print_series(results, last)
 
 
 #
+# [
+# [{symbol: BTCUSDT, 1d: False, 12h: Buy}, {1d:timeseries, 12h: timeseries}, "indicator title"],
+# [{symbol: ETHUSDT, 1d: False, 12h: Buy}, {1d:timeseries, 12h: timeseries}, "indicator title"],
+# ]
 #
-# results = array of dicts
 def color_and_print(results):
+    screenResults = list(map(lambda r: r[0], results))
+
     def color(t):
         red = "\033[31m"
         green = "\033[32m"
@@ -247,25 +252,40 @@ def color_and_print(results):
                 utterances[i] = red + utterances[i] + reset
 
         if "Buy" in utterances:
-            # figure out the list-indices of occurences of "one"
             idxs = [i for i, x in enumerate(utterances) if x.startswith("Buy")]
-
-            # modify the occurences by wrapping them in ANSI sequences
             for i in idxs:
                 utterances[i] = green + utterances[i] + reset
+
+        if "\u25B2" in utterances:  # up arrow
+            idxs = [i for i, x in enumerate(utterances) if x.startswith("\u25B2")]
+            for i in idxs:
+                utterances[i] = green + utterances[i] + reset
+
+        if "\u25BC" in utterances:  # down arrow
+            idxs = [i for i, x in enumerate(utterances) if x.startswith("\u25BC")]
+            for i in idxs:
+                utterances[i] = red + utterances[i] + reset
 
         # join the list back into a string and print
         return " ".join(utterances)
 
-    headers = dict([(x, x) for x in list(results[0].keys())])
-    for i, entry in enumerate(results):
-        for k, v in list(entry.items()):
-            if v == False:
-                results[i][k] = ""
-            elif v.startswith("Buy") or v.startswith("Sell"):
-                results[i][k] = color(v)
+    headers = dict([(x, x) for x in list(screenResults[0].keys())])
+    for i, entry in enumerate(screenResults):
+        dir1d = results[i][1]["1d"]["SUPERTd_10_2.0"].iloc[-1]
+        dir3d = results[i][1]["3d"]["SUPERTd_10_2.0"].iloc[-1]
+        arrow1d = "\u25B2" if dir1d == 1 else "\u25BC"
+        arrow3d = "\u25B2" if dir3d == 1 else "\u25BC"
 
-    print(tabulate(results, headers=headers, tablefmt="fancy_grid"))
+        # print_arrow = lambda tf, arg, v: color(arrow1d) if tf == arg else ""
+        for tf, v in list(entry.items()):
+            if v == False:
+                screenResults[i][tf] = color(arrow3d) if tf == "3d" else ""
+            elif v.startswith("Buy") or v.startswith("Sell"):
+                screenResults[i][tf] = (
+                    color(arrow3d + " " + v) if tf == "3d" else color(v)
+                )
+
+    print(tabulate(screenResults, headers=headers, tablefmt="fancy_grid"))
 
 
 #
