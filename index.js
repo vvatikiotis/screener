@@ -834,7 +834,10 @@ async function main() {
   }
 
   if (options.convertCSV) {
-    toCSV();
+    const answer = await promptly.confirm(
+      "Will generate .csv files from .json. Proceed?"
+    );
+    answer && toCSV();
   }
 
   if (options.tEst) {
