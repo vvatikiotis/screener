@@ -14,7 +14,7 @@ let SYMBOLS = [];
 // BTCUSDT
 // ETHUSDT
 // ... and so on
-
+1646697599999;
 // -----------------------------------------------------
 // HACK these and you are ready to go
 // timeframes and number of bars for seeding
@@ -77,6 +77,7 @@ async function writeJsonFile(data, flag, filename) {
     if (flag === "a") {
       const oldJsonData = await readJsonFile(filename);
       const oldData = JSON.parse(oldJsonData);
+      oldData.splice(oldData.length - 1); // always remove the current candle cause it's not complete
       writeData = oldData.concat(data);
     } else writeData = data;
 
@@ -259,20 +260,20 @@ async function fetchSymbols(symbols, resolutions) {
           let diff;
 
           // checkpoint is close datetime. Binance API sets current bar's
-          // close datetime in the future. So, nowUTC - checkpoint is negative
-          const needUpdate = (diff = (nowUTC - checkpoint) / 1000) > 0;
+          // close datetime in the future. So:
+          // -TF_seconds < nowUTC - checkpoint: current bar update
+          // nowUTC - checpoint >= 0 previous bar + 1
+          const needUpdate =
+            (diff = (nowUTC - checkpoint) / 1000) > -I2SECS[interval];
+          if (needUpdate) {
+            const count =
+              diff < 0 ? 1 : 1 + Math.floor(diff / I2SECS[interval]) + 1;
 
-          needUpdate &&
-            console.log(`fetchSymbols() :: Updating ${symbol} ${interval} ...`);
-          fetchedData = needUpdate
-            ? await fetchData(
-                symbol,
-                interval,
-                diff === nowUTC / 1000
-                  ? seedPeriod
-                  : Math.floor(diff / I2SECS[interval]) + 1
-              )
-            : undefined;
+            fetchedData = await fetchData(symbol, interval, count);
+            console.log(
+              `fetchSymbols() :: ${symbol} ${interval}: Fetched ${count} candles...`
+            );
+          }
         }
 
         if (fetchedData) {
@@ -340,6 +341,7 @@ async function prependSymbolData(symbols = SYMBOLS) {
         // fetch from sometime way back in the past to discover the ticker's
         // very first candle timestamp
         const prefetchJson = await fetchData(
+          "prepend",
           symbol,
           interval,
           1,
