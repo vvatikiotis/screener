@@ -12,6 +12,7 @@ from tabulate import tabulate
 
 # our own
 import helpers
+from indicators import kivan_supertrend
 
 
 def bang_for_buck(df, symbol, timeframe):

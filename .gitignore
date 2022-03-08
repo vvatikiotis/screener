@@ -1,7 +1,8 @@
-node_modules
-
 **/symbols/**
 **/symbols.*/**
+
+node_modules
+**/__pycache__/**
 
 .history
 .vscode
