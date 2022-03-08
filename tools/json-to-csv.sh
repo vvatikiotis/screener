@@ -2,7 +2,23 @@
 
 shopt -s extglob nullglob
 
-DIR=$HOME/devel/trading/screener
+# find current path
+DIR=`pwd`
+#echo "==> $DIR"
+
+# add path in Array
+IFS='\/' read -ra THE_PATH <<< "$DIR"
+
+# validate that the last folder , that we are in, is screener project
+ArrLength=${#THE_PATH[@]}
+LastDir=${THE_PATH[$ArrLength-1]}
+
+if [ "$LastDir" != "screener" ]
+  then 
+    echo " Please run script from screener dir "
+    exit 1
+  fi
+
 
 for f in $DIR/symbols/*.json
 do
