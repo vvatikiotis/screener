@@ -177,20 +177,18 @@ async function rebuildCheckpointsForSymbols(symbols, resolutions) {
         let data;
         try {
           data = await readJsonFile(`${symbol}_${interval}.json`);
+          const checkpoint = Object.values(JSON.parse(data)).at(-1)[6];
+          checkpoints.push({
+            symbol,
+            interval,
+            checkpoint,
+          });
         } catch (err) {
           console.log(
-            `rebuildCheckpoints() :: cannot find ${DATA_PATH}/${symbol}_${interval}.json`,
+            `rebuildCheckpoints() :: cannot find ${DATA_PATH}/${symbol}_${interval}.json, Dropping checkpoint from checkpoints.json`,
             err
           );
-          throw err;
         }
-
-        const checkpoint = Object.values(JSON.parse(data)).at(-1)[6];
-        checkpoints.push({
-          symbol,
-          interval,
-          checkpoint,
-        });
       }, undefined);
     })
   );
