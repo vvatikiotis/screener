@@ -128,13 +128,13 @@ def prepare_dataframe(data):
     df["close"] = df["close"].astype(float)
     df["high"] = df["high"].astype(float)
     df["low"] = df["low"].astype(float)
-    df["volume"] = df["volume"].astype(float)
-    df["quote_asset_volume"] = df["quote_asset_volume"].astype(float)
-    df["taker_buy_base_asset_volume"] = df["taker_buy_base_asset_volume"].astype(float)
-    df["taker_buy_quote_asset_volume"] = df["taker_buy_quote_asset_volume"].astype(
-        float
-    )
-    df["number_of_trades"] = df["number_of_trades"].astype(int)
+    # df["volume"] = df["volume"].astype(float)
+    # df["quote_asset_volume"] = df["quote_asset_volume"].astype(float)
+    # df["taker_buy_base_asset_volume"] = df["taker_buy_base_asset_volume"].astype(float)
+    # df["taker_buy_quote_asset_volume"] = df["taker_buy_quote_asset_volume"].astype(
+    #     float
+    # )
+    # df["number_of_trades"] = df["number_of_trades"].astype(int)
 
     return df
 

@@ -833,7 +833,7 @@ async function main() {
 
   if (options.convertCSV) {
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-    console.log("main() :: Will convert json to csv... Wait a bit...");
+    console.log("\nmain() :: Will convert json to csv... Wait a bit...");
     await delay(5000);
 
     toCSV();
