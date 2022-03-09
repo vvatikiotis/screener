@@ -148,12 +148,23 @@ def screen(tf_df_dict, symbol, screenFn=None, filter=True):
 
 
 #
+# tf_df_dict: {'1d': df1, '12h': df2,...}
+#
+def run_indicators(symbol, tf_df_dict):
+    # btfb = bang_for_buck(tf_df_dict["1d"], symbol, "1d")
+    # print(btfb)
+    [supertrend_series, screen_supertrend_fn, title] = SuperTrend(tf_df_dict)
+    filter_output = screen(supertrend_series, symbol, screenFn=screen_supertrend_fn)
+    return [filter_output, supertrend_series, title]
+
+
+#
 # symbol_timeframes_arr: ['BTCUSDT, ['12h', '4h', ...]]
 # processes one symbol in all its timeframes
 #
 def run(symbol_timeframes_arr):
     [symbol, TFs] = symbol_timeframes_arr
-    process_dict = {}
+    tf_df_dict = {}
     for timeframe in TFs:
         path = f"../symbols/csv/{symbol}_{timeframe}.csv"
         with open(path, "r") as csvfile:
@@ -161,16 +172,11 @@ def run(symbol_timeframes_arr):
             data = list(csv_dict_reader)
 
         df = prepare_dataframe(data)
-        process_dict[timeframe] = df
+        tf_df_dict[timeframe] = df
 
-    # btfb = bang_for_buck(process_dict["1d"], symbol, "1d")
-    # print(btfb)
-    [symbol_tfs_dict, screen_supertrend_fn, title] = SuperTrend(process_dict)
-    supertrend_output_10_2 = screen(
-        symbol_tfs_dict, symbol, screenFn=screen_supertrend_fn
-    )
+    [outputs, series, title] = run_indicators(symbol, tf_df_dict)
 
-    return [supertrend_output_10_2, symbol_tfs_dict, title]
+    return [outputs, series, title]
 
 
 def main():
