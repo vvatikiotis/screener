@@ -41,12 +41,12 @@ def run_btfd(tf_df_dict, amount=10000, lookback=200):
 
         return result
 
-    # btfb = bang_for_buck(tf_df_dict["1d"], "1d")
+    btfb = bang_for_buck(tf_df_dict["1d"], "1d")
 
     return {
         "name": f"Bang for the Buck, amount: {amount}, lookback: {lookback}",
         "series": None,
-        "screened": None,  # btfb,
+        "screened": btfb,
     }
 
 
@@ -113,15 +113,15 @@ def run_supertrend(tf_df_dict, length=10, multiplier=2):
 
     #
     def SuperTrend(tf_sources_dict, length=10, multiplier=2):
-        st_tfs_dict = {}
+        tf_st_series_dict = {}
         for tf in tf_sources_dict:
             df = tf_sources_dict[tf]
             # if tf == "4h":  # test only this timeframe
-            st_tfs_dict[tf] = ta.supertrend(
+            tf_st_series_dict[tf] = ta.supertrend(
                 df["high"], df["low"], df["close"], length, multiplier
             )
 
-        return st_tfs_dict
+        return tf_st_series_dict
 
     series = SuperTrend(tf_df_dict, length, multiplier)
     screened = screen_supertrend(series)
@@ -158,10 +158,10 @@ def prepare_dataframe(data):
 #
 # tf_df_dict: {'1d': df1, '12h': df2,...}
 #
-def run_indicators(symbol, tf_df_dict):
-    bftb_dict = run_btfd(symbol, tf_df_dict)
-    st_dict = run_supertrend(symbol, tf_df_dict)
-    print(st_dict)
+def run_indicators(tf_df_dict):
+    bftb_dict = run_btfd(tf_df_dict)
+    st_dict = run_supertrend(tf_df_dict)
+
     return {"indicator1": st_dict, "indicator2": bftb_dict}
 
 
@@ -181,9 +181,9 @@ def run(symbol_timeframes_arr):
         df = prepare_dataframe(data)
         tf_df_dict[timeframe] = df
 
-    results = run_indicators(symbol, tf_df_dict)
+    results = run_indicators(tf_df_dict)
 
-    return {"symbol": symbol, **results}
+    return {"symbol": {"name": symbol}, **results}
 
 
 def main():
@@ -230,6 +230,7 @@ def main():
     results = pool.map(run, symbol_tfs_arr)
     pool.close()
     pool.join()
+    print(results)
     # output(results, parsed_arguments.time_series)
 
 
