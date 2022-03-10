@@ -16,11 +16,9 @@ from indicators import kivan_supertrend
 
 
 def run_btfd(tf_df_dict, amount=10000, lookback=200):
-    def bang_for_buck(df, timeframe):
-        # amount = 10000
+    def bang_for_buck(df, amount, lookback):
         days_in_year = 365
         l = len(df)
-        # lookback = 200 if l >= 200 else l
         bang_4_buck = (
             (amount / df["close"])
             * ta.sma(
@@ -33,19 +31,21 @@ def run_btfd(tf_df_dict, amount=10000, lookback=200):
         highB4B = bang_4_buck.tail(days_in_year).max()
         lowB4B = bang_4_buck.tail(days_in_year).min()
 
-        result = {
-            "BtfB": bang_4_buck.tail(1).to_string(index=False),
-            "BtfB_High": highB4B,
-            "BtfB_Low": lowB4B,
-        }
+        result = pd.DataFrame(
+            {
+                "BtfB": [bang_4_buck.tail(1).to_string(index=False)],
+                "BtfB_High": [highB4B],
+                "BtfB_Low": [lowB4B],
+            }
+        )
 
         return result
 
-    btfb = bang_for_buck(tf_df_dict["1d"], "1d")
+    btfb = bang_for_buck(tf_df_dict["1d"], amount, lookback)
 
     return {
         "name": f"Bang for the Buck, amount: {amount}, lookback: {lookback}",
-        "series": None,
+        "series": {"1d": btfb},
         "screened": btfb,
     }
 
@@ -116,7 +116,6 @@ def run_supertrend(tf_df_dict, length=10, multiplier=2):
         tf_st_series_dict = {}
         for tf in tf_sources_dict:
             df = tf_sources_dict[tf]
-            # if tf == "4h":  # test only this timeframe
             tf_st_series_dict[tf] = ta.supertrend(
                 df["high"], df["low"], df["close"], length, multiplier
             )
@@ -230,8 +229,7 @@ def main():
     results = pool.map(run, symbol_tfs_arr)
     pool.close()
     pool.join()
-    print(results)
-    # output(results, parsed_arguments.time_series)
+    output(results, parsed_arguments.time_series)
 
 
 #
@@ -305,18 +303,22 @@ def color_and_print(results):
 
 #
 # [
-# [{symbol: BTCUSDT, 1d: False, 12h: Buy}, {1d:timeseries, 12h: timeseries}, "indicator title"],
-# [{symbol: ETHUSDT, 1d: False, 12h: Buy}, {1d:timeseries, 12h: timeseries}, "indicator title"],
+# {symbol: {name: BTCUSDT}, indicator1: { name:'Supertrend', series: {1d: df},  screened: {1d: False, 12h: Buy}}, indicator2:{name:{}, series: {}, screened: {} } },
+# {symbol: {name: ATOMUSDT}, indicator1: { name:'Supertrend', series: {1d: df},  screened: {1d: False, 12h: Buy}}, indicator2:{name:{}, series: {}, screened: {} } },
 # ]
 #
 def print_series(results, last):
-    for i, res in enumerate(results):
-        indicator = res[2]
-        print(f"\n------------ {indicator} ------------")
-        print(f'\n------------ {res[0]["symbol"]} ------------')
-        for tf in res[1]:
-            print(f"Timeframe: {tf}")
-            print(res[1][tf].tail(int(last)))
+    for i, symbol_dict in enumerate(results):  # iterate per symbol
+        symbol = symbol_dict["symbol"]["name"]
+        print(f"\n\n----------------- ", colored(symbol, "green"), " -----------------")
+        for k, indicator in symbol_dict.items():  # iterate per indicator
+            if k.startswith("indicator") == True:
+                indicator_name = indicator["name"]
+                indicator_series = indicator["series"]
+                print(f"\n------------ {indicator_name} ------------")
+                for tf, series in indicator_series.items():
+                    print(f"Timeframe: {tf}")
+                    print(series.tail(int(last)))
 
 
 def set_options():
