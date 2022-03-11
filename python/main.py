@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import csv
-import pandas_ta as ta
 import matplotlib.pyplot as plt
 import os
 import sys
@@ -12,114 +11,13 @@ from tabulate import tabulate
 
 # our own
 import helpers
-from indicators import kivan_supertrend
+import supertrend
+import bftb
 
 
-def bang_for_buck(df, symbol, timeframe):
-    amount = 10000
-    days_in_year = 365
-    l = len(df)
-    lookback = 200 if l >= 200 else l
-    bang_4_buck = (
-        (amount / df["close"])
-        * ta.sma(
-            ta.true_range(high=df["high"], low=df["low"], close=df["close"]),
-            length=lookback,
-        )
-        / 100
-    )
-
-    highB4B = bang_4_buck.tail(days_in_year).max()
-    lowB4B = bang_4_buck.tail(days_in_year).min()
-
-    result = {
-        "symbol": symbol,
-        "results": {
-            "BtfB": bang_4_buck.tail(1).to_string(index=False),
-            "BtfB_High": highB4B,
-            "BtfB_Low": lowB4B,
-        },
-    }
-
-    return result
-
-
-def SuperTrend(df_dict, length=10, multiplier=2):
-    def screen_supertrend(tf_df_dict, symbol):
-        # several predicates can be defined
-        def predicate1(df):
-            last = -1
-            one_b4_last = -2
-            two_b4_last = -3
-            three_b4_last = -4
-            direction = lambda pos: df.iloc[pos][
-                1
-            ]  # 1 = position of direction in the series
-
-            #
-            if direction(one_b4_last) == -1 and direction(last) == 1:
-                return "Buy (0)"
-
-            if (
-                direction(two_b4_last) == -1
-                and direction(one_b4_last) == 1
-                and direction(last) == 1
-            ):
-                return "Buy (-1)"
-
-            if (
-                direction(three_b4_last) == -1
-                and direction(two_b4_last) == 1
-                and direction(one_b4_last) == 1
-                and direction(last) == 1
-            ):
-                return "Buy (-2)"
-
-            if direction(one_b4_last) == 1 and direction(last) == -1:
-                return "Sell (0)"
-            if (
-                direction(two_b4_last) == 1
-                and direction(one_b4_last) == -1
-                and direction(last) == -1
-            ):
-                return "Sell (-1)"
-            if (
-                direction(three_b4_last) == 1
-                and direction(two_b4_last) == -1
-                and direction(one_b4_last) == -1
-                and direction(last) == -1
-            ):
-                return "Sell (-2)"
-
-            return False
-
-        results = {}
-        results["symbol"] = symbol
-        for tf in tf_df_dict:
-            p = predicate1(tf_df_dict[tf])
-            results[tf] = p
-            # if (
-            #     symbol == "BTCUSDT" and tf == "1h"
-            # ):  # test only this symbol and timeframe
-            # print(tf_df_dict[tf].tail(50))
-
-        return results
-
-    symbol_tfs_dict = {}
-    for tf in df_dict:
-        df = df_dict[tf]
-        # if tf == "4h":  # test only this timeframe
-        symbol_tfs_dict[tf] = ta.supertrend(
-            df["high"], df["low"], df["close"], length, multiplier
-        )
-
-    return [
-        symbol_tfs_dict,
-        screen_supertrend,
-        f"Supertrend length: {length}, multiplier: {multiplier} ",
-    ]
-
-
+#
+#
+#
 def prepare_dataframe(data):
     df = pd.DataFrame(data)
     df["open_time"] = pd.to_datetime(arg=df["open_time"], unit="ms")
@@ -140,22 +38,18 @@ def prepare_dataframe(data):
 
 
 #
-# tf_dfs_dict: { '12h': supertrend_df, '4h': supertrend_df}
-#
-def screen(tf_df_dict, symbol, screenFn=None, filter=True):
-    p = screenFn(tf_df_dict, symbol)
-    return p
-
-
-#
 # tf_df_dict: {'1d': df1, '12h': df2,...}
 #
-def run_indicators(symbol, tf_df_dict):
-    # btfb = bang_for_buck(tf_df_dict["1d"], symbol, "1d")
-    # print(btfb)
-    [supertrend_series, screen_supertrend_fn, title] = SuperTrend(tf_df_dict)
-    filter_output = screen(supertrend_series, symbol, screenFn=screen_supertrend_fn)
-    return [filter_output, supertrend_series, title]
+def run_indicators(tf_df_dict):
+    # print(tf_df_dict)
+    st_dict = supertrend.run_supertrend(tf_df_dict)
+    if "1d" in tf_df_dict:
+        bftb_dict = bftb.run_btfd(tf_df_dict)
+        inds = {"indicator1": bftb_dict, "indicator2": st_dict}
+    else:
+        inds = {"indicator1": st_dict}
+
+    return inds
 
 
 #
@@ -174,9 +68,9 @@ def run(symbol_timeframes_arr):
         df = prepare_dataframe(data)
         tf_df_dict[timeframe] = df
 
-    [outputs, series, title] = run_indicators(symbol, tf_df_dict)
+    results = run_indicators(tf_df_dict)
 
-    return [outputs, series, title]
+    return {"symbol": {"name": symbol}, **results}
 
 
 def main():
@@ -236,79 +130,62 @@ def output(results, last=10):
 
 #
 # [
-# [{symbol: BTCUSDT, 1d: False, 12h: Buy}, {1d:timeseries, 12h: timeseries}, "indicator title"],
-# [{symbol: ETHUSDT, 1d: False, 12h: Buy}, {1d:timeseries, 12h: timeseries}, "indicator title"],
+# {symbol: {name: BTCUSDT}, indicator1: { name:'Supertrend', series: {1d: df},  screened: {1d: False, 12h: Buy}}, indicator2:{name:{}, series: {}, screened: {} } },
+# {symbol: {name: ATOMUSDT}, indicator1: { name:'Supertrend', series: {1d: df},  screened: {1d: False, 12h: Buy}}, indicator2:{name:{}, series: {}, screened: {} } },
 # ]
 #
 def color_and_print(results):
-    screenResults = list(map(lambda r: r[0], results))
 
-    def color(t):
-        red = "\033[31m"
-        green = "\033[32m"
-        blue = "\033[34m"
-        reset = "\033[39m"
-        utterances = t.split()
+    # NOTE: to add an indicator, we MUST spacify an OUTPUT_ID and a tabulate function
+    # inside the indicator module. The tabulate function MUST return:
+    # [headers_dict, results_dict]
+    def get_tabulate_func(id):
+        if id == supertrend.OUTPUT_ID:
+            return supertrend.tabulate
+        elif id == bftb.OUTPUT_ID:
+            return bftb.tabulate
 
-        if "Sell" in utterances:
-            # figure out the list-indices of occurences of "one"
-            idxs = [i for i, x in enumerate(utterances) if x.startswith("Sell")]
+    headers = []
+    table = []
 
-            # modify the occurences by wrapping them in ANSI sequences
-            for i in idxs:
-                utterances[i] = red + utterances[i] + reset
+    for i, symbol_dict in enumerate(results):
+        symbol = symbol_dict["symbol"]["name"]
+        headers.append({"symbol": "Symbol"})
+        table.append({"symbol": symbol})
 
-        if "Buy" in utterances:
-            idxs = [i for i, x in enumerate(utterances) if x.startswith("Buy")]
-            for i in idxs:
-                utterances[i] = green + utterances[i] + reset
-
-        if "\u25B2" in utterances:  # up arrow
-            idxs = [i for i, x in enumerate(utterances) if x.startswith("\u25B2")]
-            for i in idxs:
-                utterances[i] = green + utterances[i] + reset
-
-        if "\u25BC" in utterances:  # down arrow
-            idxs = [i for i, x in enumerate(utterances) if x.startswith("\u25BC")]
-            for i in idxs:
-                utterances[i] = red + utterances[i] + reset
-
-        # join the list back into a string and print
-        return " ".join(utterances)
-
-    headers = dict([(x, x) for x in list(screenResults[0].keys())])
-    for i, entry in enumerate(screenResults):
-        dir1d = results[i][1]["1d"]["SUPERTd_10_2.0"].iloc[-1]
-        dir3d = results[i][1]["3d"]["SUPERTd_10_2.0"].iloc[-1]
-        arrow1d = "\u25B2" if dir1d == 1 else "\u25BC"
-        arrow3d = "\u25B2" if dir3d == 1 else "\u25BC"
-
-        # print_arrow = lambda tf, arg, v: color(arrow1d) if tf == arg else ""
-        for tf, v in list(entry.items()):
-            if v == False:
-                screenResults[i][tf] = color(arrow3d) if tf == "3d" else ""
-            elif v.startswith("Buy") or v.startswith("Sell"):
-                screenResults[i][tf] = (
-                    color(arrow3d + " " + v) if tf == "3d" else color(v)
+        for key, value in symbol_dict.items():
+            if key.startswith("indicator") == True:
+                tabulate_func = get_tabulate_func(value["output_id"])
+                [header, dict_] = tabulate_func(
+                    symbol_dict[key]["series"],
+                    symbol_dict[key]["screened"],
+                    helpers.color,
                 )
+                headers[i] |= header  # |= Update headers[i] dict, in place
+                table[i] |= dict_
 
-    print(tabulate(screenResults, headers=headers, tablefmt="fancy_grid"))
+    print(tabulate(table, headers=headers[0], tablefmt="fancy_grid"))
 
 
 #
 # [
-# [{symbol: BTCUSDT, 1d: False, 12h: Buy}, {1d:timeseries, 12h: timeseries}, "indicator title"],
-# [{symbol: ETHUSDT, 1d: False, 12h: Buy}, {1d:timeseries, 12h: timeseries}, "indicator title"],
+# {symbol: {name: BTCUSDT}, indicator1: { name:'Supertrend', series: {1d: df},  screened: {1d: False, 12h: Buy}}, indicator2:{name:{}, series: {}, screened: {} } },
+# {symbol: {name: ATOMUSDT}, indicator1: { name:'Supertrend', series: {1d: df},  screened: {1d: False, 12h: Buy}}, indicator2:{name:{}, series: {}, screened: {} } },
 # ]
 #
 def print_series(results, last):
-    for i, res in enumerate(results):
-        indicator = res[2]
-        print(f"\n------------ {indicator} ------------")
-        print(f'\n------------ {res[0]["symbol"]} ------------')
-        for tf in res[1]:
-            print(f"Timeframe: {tf}")
-            print(res[1][tf].tail(int(last)))
+    for i, symbol_dict in enumerate(results):  # iterate per symbol
+        symbol = symbol_dict["symbol"]["name"]
+        print(f"\n\n----------------- ", colored(symbol, "green"), " -----------------")
+
+        for k, indicator in symbol_dict.items():  # iterate per indicator
+            if k.startswith("indicator") == True:
+                indicator_name = indicator["name"]
+                indicator_series = indicator["series"]
+                print(f"\n------------ {indicator_name} ------------")
+                for tf, series in indicator_series.items():
+                    print(f"Timeframe: {tf}")
+                    print(series.tail(int(last)))
 
 
 def set_options():
