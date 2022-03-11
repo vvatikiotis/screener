@@ -20,11 +20,14 @@ def tabulate(series, tf_screened, color):
 def run_btfd(tf_df_dict, amount=10000, lookback=200):
     def bang_for_buck(df, amount, lookback):
         days_in_year = 365
+        df_len = len(df)
+        lookb = lookback if df_len >= 200 else df_len
+
         bang_4_buck = (
             (amount / df["close"])
             * ta.sma(
                 ta.true_range(high=df["high"], low=df["low"], close=df["close"]),
-                length=lookback,
+                length=lookb,
             )
             / 100
         )
