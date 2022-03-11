@@ -78,10 +78,6 @@ def run_supertrend(tf_df_dict, length=10, multiplier=2):
         for tf in tf_df_dict:
             p = predicate1(tf_df_dict[tf])
             results[tf] = p
-            # if (
-            #     symbol == "BTCUSDT" and tf == "1h"
-            # ):  # test only this symbol and timeframe
-            # print(tf_df_dict[tf].tail(50))
 
         return results
 

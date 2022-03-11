@@ -41,7 +41,6 @@ def prepare_dataframe(data):
 # tf_df_dict: {'1d': df1, '12h': df2,...}
 #
 def run_indicators(tf_df_dict):
-    # print(tf_df_dict)
     st_dict = supertrend.run_supertrend(tf_df_dict)
     if "1d" in tf_df_dict:
         bftb_dict = bftb.run_btfd(tf_df_dict)
@@ -57,6 +56,7 @@ def run_indicators(tf_df_dict):
 # processes one symbol in all its timeframes
 #
 def run(symbol_timeframes_arr):
+    # columns = ["open_time", "open", "high", "low", "close", "close_time"]
     [symbol, TFs] = symbol_timeframes_arr
     tf_df_dict = {}
     for timeframe in TFs:
