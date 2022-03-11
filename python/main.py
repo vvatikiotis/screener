@@ -16,6 +16,11 @@ from indicators import kivan_supertrend
 
 
 def run_btfd(tf_df_dict, amount=10000, lookback=200):
+    def tabulate(symbol, tf_series_dict, tf_screened_dict, color):
+        headers = list(tf_screened_dict.keys())
+
+        return headers
+
     def bang_for_buck(df, amount, lookback):
         days_in_year = 365
         l = len(df)
@@ -46,7 +51,8 @@ def run_btfd(tf_df_dict, amount=10000, lookback=200):
     return {
         "name": f"Bang for the Buck, amount: {amount}, lookback: {lookback}",
         "series": {"1d": btfb},
-        "screened": btfb,
+        "screened": {"1d": btfb["BtfB"]},
+        # "tabulateFn": tabulate,
     }
 
 
@@ -129,6 +135,7 @@ def run_supertrend(tf_df_dict, length=10, multiplier=2):
         "name": f"Supertrend, length: {length}, multiplier: {multiplier} ",
         "series": series,
         "screened": screened,
+        # "tabulateFn": tabulate,
     }
 
 
@@ -247,7 +254,7 @@ def output(results, last=10):
 # ]
 #
 def color_and_print(results):
-    screenResults = list(map(lambda r: r[0], results))
+    # screenResults = list(map(lambda r: r[0], results))
 
     def color(t):
         red = "\033[31m"
@@ -282,23 +289,33 @@ def color_and_print(results):
         # join the list back into a string and print
         return " ".join(utterances)
 
-    headers = dict([(x, x) for x in list(screenResults[0].keys())])
-    for i, entry in enumerate(screenResults):
-        dir1d = results[i][1]["1d"]["SUPERTd_10_2.0"].iloc[-1]
-        dir3d = results[i][1]["3d"]["SUPERTd_10_2.0"].iloc[-1]
+    table = []
+    headers = {
+        "symbol": "Symbol",
+        "1w": "1w",
+        "3d": "3d",
+        "1d": "1d",
+        "12h": "12h",
+        "6h": "6h",
+        "4h": "4h",
+        "1h": "1h",
+    }
+    for i, symbol_dict in enumerate(results):
+        series = symbol_dict["indicator1"]["series"]
+        dir1d = series["1d"]["SUPERTd_10_2.0"].iloc[-1]
+        dir3d = series["3d"]["SUPERTd_10_2.0"].iloc[-1]
         arrow1d = "\u25B2" if dir1d == 1 else "\u25BC"
         arrow3d = "\u25B2" if dir3d == 1 else "\u25BC"
+        table.append({"symbol": symbol_dict["symbol"]["name"]})
 
-        # print_arrow = lambda tf, arg, v: color(arrow1d) if tf == arg else ""
-        for tf, v in list(entry.items()):
+        screened = symbol_dict["indicator1"]["screened"]
+        for tf, v in screened.items():
             if v == False:
-                screenResults[i][tf] = color(arrow3d) if tf == "3d" else ""
+                table[i][tf] = color(arrow3d) if tf == "3d" else ""
             elif v.startswith("Buy") or v.startswith("Sell"):
-                screenResults[i][tf] = (
-                    color(arrow3d + " " + v) if tf == "3d" else color(v)
-                )
+                table[i][tf] = color(arrow3d + " " + v) if tf == "3d" else color(v)
 
-    print(tabulate(screenResults, headers=headers, tablefmt="fancy_grid"))
+    print(tabulate(table, headers=headers, tablefmt="fancy_grid"))
 
 
 #
@@ -311,6 +328,7 @@ def print_series(results, last):
     for i, symbol_dict in enumerate(results):  # iterate per symbol
         symbol = symbol_dict["symbol"]["name"]
         print(f"\n\n----------------- ", colored(symbol, "green"), " -----------------")
+
         for k, indicator in symbol_dict.items():  # iterate per indicator
             if k.startswith("indicator") == True:
                 indicator_name = indicator["name"]
