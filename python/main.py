@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import csv
-import pandas_ta as ta
 import matplotlib.pyplot as plt
 import os
 import sys
@@ -12,131 +11,8 @@ from tabulate import tabulate
 
 # our own
 import helpers
-from indicators import kivan_supertrend
-
-
-def run_btfd(tf_df_dict, amount=10000, lookback=200):
-    def tabulate(symbol, tf_series_dict, tf_screened_dict, color):
-        headers = list(tf_screened_dict.keys())
-
-        return headers
-
-    def bang_for_buck(df, amount, lookback):
-        days_in_year = 365
-        l = len(df)
-        bang_4_buck = (
-            (amount / df["close"])
-            * ta.sma(
-                ta.true_range(high=df["high"], low=df["low"], close=df["close"]),
-                length=lookback,
-            )
-            / 100
-        )
-
-        highB4B = bang_4_buck.tail(days_in_year).max()
-        lowB4B = bang_4_buck.tail(days_in_year).min()
-
-        result = pd.DataFrame(
-            {
-                "BtfB": [bang_4_buck.tail(1).to_string(index=False)],
-                "BtfB_High": [highB4B],
-                "BtfB_Low": [lowB4B],
-            }
-        )
-
-        return result
-
-    btfb = bang_for_buck(tf_df_dict["1d"], amount, lookback)
-
-    return {
-        "name": f"Bang for the Buck, amount: {amount}, lookback: {lookback}",
-        "series": {"1d": btfb},
-        "screened": {"1d": btfb["BtfB"]},
-        # "tabulateFn": tabulate,
-    }
-
-
-def run_supertrend(tf_df_dict, length=10, multiplier=2):
-    #
-    def screen_supertrend(tf_df_dict):
-        # several predicates can be defined
-        def predicate1(df):
-            last = -1
-            one_b4_last = -2
-            two_b4_last = -3
-            three_b4_last = -4
-            direction = lambda pos: df.iloc[pos][
-                1
-            ]  # 1 = position of direction in the series
-
-            #
-            if direction(one_b4_last) == -1 and direction(last) == 1:
-                return "Buy (0)"
-
-            if (
-                direction(two_b4_last) == -1
-                and direction(one_b4_last) == 1
-                and direction(last) == 1
-            ):
-                return "Buy (-1)"
-
-            if (
-                direction(three_b4_last) == -1
-                and direction(two_b4_last) == 1
-                and direction(one_b4_last) == 1
-                and direction(last) == 1
-            ):
-                return "Buy (-2)"
-
-            if direction(one_b4_last) == 1 and direction(last) == -1:
-                return "Sell (0)"
-            if (
-                direction(two_b4_last) == 1
-                and direction(one_b4_last) == -1
-                and direction(last) == -1
-            ):
-                return "Sell (-1)"
-            if (
-                direction(three_b4_last) == 1
-                and direction(two_b4_last) == -1
-                and direction(one_b4_last) == -1
-                and direction(last) == -1
-            ):
-                return "Sell (-2)"
-
-            return False
-
-        results = {}
-        for tf in tf_df_dict:
-            p = predicate1(tf_df_dict[tf])
-            results[tf] = p
-            # if (
-            #     symbol == "BTCUSDT" and tf == "1h"
-            # ):  # test only this symbol and timeframe
-            # print(tf_df_dict[tf].tail(50))
-
-        return results
-
-    #
-    def SuperTrend(tf_sources_dict, length=10, multiplier=2):
-        tf_st_series_dict = {}
-        for tf in tf_sources_dict:
-            df = tf_sources_dict[tf]
-            tf_st_series_dict[tf] = ta.supertrend(
-                df["high"], df["low"], df["close"], length, multiplier
-            )
-
-        return tf_st_series_dict
-
-    series = SuperTrend(tf_df_dict, length, multiplier)
-    screened = screen_supertrend(series)
-
-    return {
-        "name": f"Supertrend, length: {length}, multiplier: {multiplier} ",
-        "series": series,
-        "screened": screened,
-        # "tabulateFn": tabulate,
-    }
+import supertrend
+import bftb
 
 
 #
@@ -165,8 +41,8 @@ def prepare_dataframe(data):
 # tf_df_dict: {'1d': df1, '12h': df2,...}
 #
 def run_indicators(tf_df_dict):
-    bftb_dict = run_btfd(tf_df_dict)
-    st_dict = run_supertrend(tf_df_dict)
+    bftb_dict = bftb.run_btfd(tf_df_dict)
+    st_dict = supertrend.run_supertrend(tf_df_dict)
 
     return {"indicator1": st_dict, "indicator2": bftb_dict}
 
@@ -254,41 +130,6 @@ def output(results, last=10):
 # ]
 #
 def color_and_print(results):
-    # screenResults = list(map(lambda r: r[0], results))
-
-    def color(t):
-        red = "\033[31m"
-        green = "\033[32m"
-        blue = "\033[34m"
-        reset = "\033[39m"
-        utterances = t.split()
-
-        if "Sell" in utterances:
-            # figure out the list-indices of occurences of "one"
-            idxs = [i for i, x in enumerate(utterances) if x.startswith("Sell")]
-
-            # modify the occurences by wrapping them in ANSI sequences
-            for i in idxs:
-                utterances[i] = red + utterances[i] + reset
-
-        if "Buy" in utterances:
-            idxs = [i for i, x in enumerate(utterances) if x.startswith("Buy")]
-            for i in idxs:
-                utterances[i] = green + utterances[i] + reset
-
-        if "\u25B2" in utterances:  # up arrow
-            idxs = [i for i, x in enumerate(utterances) if x.startswith("\u25B2")]
-            for i in idxs:
-                utterances[i] = green + utterances[i] + reset
-
-        if "\u25BC" in utterances:  # down arrow
-            idxs = [i for i, x in enumerate(utterances) if x.startswith("\u25BC")]
-            for i in idxs:
-                utterances[i] = red + utterances[i] + reset
-
-        # join the list back into a string and print
-        return " ".join(utterances)
-
     table = []
     headers = {
         "symbol": "Symbol",
@@ -311,9 +152,11 @@ def color_and_print(results):
         screened = symbol_dict["indicator1"]["screened"]
         for tf, v in screened.items():
             if v == False:
-                table[i][tf] = color(arrow3d) if tf == "3d" else ""
+                table[i][tf] = helpers.color(arrow3d) if tf == "3d" else ""
             elif v.startswith("Buy") or v.startswith("Sell"):
-                table[i][tf] = color(arrow3d + " " + v) if tf == "3d" else color(v)
+                table[i][tf] = (
+                    helpers.color(arrow3d + " " + v) if tf == "3d" else helpers.color(v)
+                )
 
     print(tabulate(table, headers=headers, tablefmt="fancy_grid"))
 
