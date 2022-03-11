@@ -41,10 +41,15 @@ def prepare_dataframe(data):
 # tf_df_dict: {'1d': df1, '12h': df2,...}
 #
 def run_indicators(tf_df_dict):
-    bftb_dict = bftb.run_btfd(tf_df_dict)
+    # print(tf_df_dict)
     st_dict = supertrend.run_supertrend(tf_df_dict)
+    if "1d" in tf_df_dict:
+        bftb_dict = bftb.run_btfd(tf_df_dict)
+        inds = {"indicator1": bftb_dict, "indicator2": st_dict}
+    else:
+        inds = {"indicator1": st_dict}
 
-    return {"indicator1": st_dict, "indicator2": bftb_dict}
+    return inds
 
 
 #
@@ -125,40 +130,41 @@ def output(results, last=10):
 
 #
 # [
-# [{symbol: BTCUSDT, 1d: False, 12h: Buy}, {1d:timeseries, 12h: timeseries}, "indicator title"],
-# [{symbol: ETHUSDT, 1d: False, 12h: Buy}, {1d:timeseries, 12h: timeseries}, "indicator title"],
+# {symbol: {name: BTCUSDT}, indicator1: { name:'Supertrend', series: {1d: df},  screened: {1d: False, 12h: Buy}}, indicator2:{name:{}, series: {}, screened: {} } },
+# {symbol: {name: ATOMUSDT}, indicator1: { name:'Supertrend', series: {1d: df},  screened: {1d: False, 12h: Buy}}, indicator2:{name:{}, series: {}, screened: {} } },
 # ]
 #
 def color_and_print(results):
+
+    # NOTE: to add an indicator, we MUST spacify an OUTPUT_ID and a tabulate function
+    # inside the indicator module. The tabulate function MUST return:
+    # [headers_dict, results_dict]
+    def get_tabulate_func(id):
+        if id == supertrend.OUTPUT_ID:
+            return supertrend.tabulate
+        elif id == bftb.OUTPUT_ID:
+            return bftb.tabulate
+
+    headers = []
     table = []
-    headers = {
-        "symbol": "Symbol",
-        "1w": "1w",
-        "3d": "3d",
-        "1d": "1d",
-        "12h": "12h",
-        "6h": "6h",
-        "4h": "4h",
-        "1h": "1h",
-    }
+
     for i, symbol_dict in enumerate(results):
-        series = symbol_dict["indicator1"]["series"]
-        dir1d = series["1d"]["SUPERTd_10_2.0"].iloc[-1]
-        dir3d = series["3d"]["SUPERTd_10_2.0"].iloc[-1]
-        arrow1d = "\u25B2" if dir1d == 1 else "\u25BC"
-        arrow3d = "\u25B2" if dir3d == 1 else "\u25BC"
-        table.append({"symbol": symbol_dict["symbol"]["name"]})
+        symbol = symbol_dict["symbol"]["name"]
+        headers.append({"symbol": "Symbol"})
+        table.append({"symbol": symbol})
 
-        screened = symbol_dict["indicator1"]["screened"]
-        for tf, v in screened.items():
-            if v == False:
-                table[i][tf] = helpers.color(arrow3d) if tf == "3d" else ""
-            elif v.startswith("Buy") or v.startswith("Sell"):
-                table[i][tf] = (
-                    helpers.color(arrow3d + " " + v) if tf == "3d" else helpers.color(v)
+        for key, value in symbol_dict.items():
+            if key.startswith("indicator") == True:
+                tabulate_func = get_tabulate_func(value["output_id"])
+                [header, dict_] = tabulate_func(
+                    symbol_dict[key]["series"],
+                    symbol_dict[key]["screened"],
+                    helpers.color,
                 )
+                headers[i] |= header  # |= Update headers[i] dict, in place
+                table[i] |= dict_
 
-    print(tabulate(table, headers=headers, tablefmt="fancy_grid"))
+    print(tabulate(table, headers=headers[0], tablefmt="fancy_grid"))
 
 
 #
