@@ -7,19 +7,20 @@ OUTPUT_ID = "supertrend"
 def tabulate(tf_series_dict, tf_screened_dict, color):
     headers = dict([(x, x) for x in list(tf_screened_dict.keys())])
 
-    dict_ = {}
     arrow3d = ""
     if "3d" in tf_series_dict:
+        headers["3d"] = "direction - 3d"
         # dir1d = tf_series_dict["1d"]["SUPERTd_10_2.0"].iloc[-1]
         dir3d = tf_series_dict["3d"]["SUPERTd_10_2.0"].iloc[-1]
         # arrow1d = "\u25B2" if dir1d == 1 else "\u25BC"
         arrow3d = "\u25B2" if dir3d == 1 else "\u25BC"
 
+    dict_ = {}
     for tf, v in tf_screened_dict.items():
         if v == False:
             dict_[tf] = color(arrow3d) if tf == "3d" else ""
         elif v.startswith("Buy") or v.startswith("Sell"):
-            dict_[tf] = color(arrow3d + " " + v) if tf == "3d" else color(v)
+            dict_[tf] = color(arrow3d + " -  " + v) if tf == "3d" else color(v)
 
     return [headers, dict_]
 

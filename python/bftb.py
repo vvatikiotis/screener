@@ -13,7 +13,7 @@ def tabulate(series, tf_screened, color):
 
     return [
         headers,
-        {"BftB": f"{low} / {bftb} / {high}"},
+        {"BftB (low - high)": f"{bftb} ({low} - {high})"},
     ]
 
 
