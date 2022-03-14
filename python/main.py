@@ -13,7 +13,7 @@ from tabulate import tabulate
 import helpers
 import supertrend
 import bftb
-
+import inside_bar
 
 #
 #
@@ -42,11 +42,12 @@ def prepare_dataframe(data):
 #
 def run_indicators(tf_df_dict):
     st_dict = supertrend.run_supertrend(tf_df_dict)
+    ib_dict = inside_bar.run_inside_bar(tf_df_dict)
     if "1d" in tf_df_dict:
         bftb_dict = bftb.run_btfd(tf_df_dict)
-        inds = {"indicator1": bftb_dict, "indicator2": st_dict}
+        inds = {"indicator1": bftb_dict, "indicator2": st_dict, "indicator3": ib_dict}
     else:
-        inds = {"indicator1": st_dict}
+        inds = {"indicator1": st_dict, "indicator2": ib_dict}
 
     return inds
 
@@ -153,6 +154,8 @@ def color_and_print(results):
             return supertrend.tabulate
         elif id == bftb.OUTPUT_ID:
             return bftb.tabulate
+        elif id == inside_bar.OUTPUT_ID:
+            return inside_bar.tabulate
 
     headers = []
     table = []

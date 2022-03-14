@@ -5,7 +5,7 @@ OUTPUT_ID = "bftb"
 
 
 def tabulate(series, tf_screened, color):
-    headers = {"BftB": "Bang 4 Buck"}
+    headers = {"BftB": "BftB (low - high)"}
 
     high = "{:.2f}".format(series["BtfB_High"].iloc[-1])
     low = "{:.2f}".format(series["BtfB_Low"].iloc[-1])
@@ -13,7 +13,7 @@ def tabulate(series, tf_screened, color):
 
     return [
         headers,
-        {"BftB (low - high)": f"{bftb} ({low} - {high})"},
+        {"BftB": f"{bftb} ({low} - {high})"},
     ]
 
 
