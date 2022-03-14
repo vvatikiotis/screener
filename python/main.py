@@ -56,14 +56,23 @@ def run_indicators(tf_df_dict):
 # processes one symbol in all its timeframes
 #
 def run(symbol_timeframes_arr):
-    # columns = ["open_time", "open", "high", "low", "close", "close_time"]
     [symbol, TFs] = symbol_timeframes_arr
     tf_df_dict = {}
     for timeframe in TFs:
         path = f"../symbols/csv/{symbol}_{timeframe}.csv"
         with open(path, "r") as csvfile:
             csv_dict_reader = csv.DictReader(csvfile, delimiter=",")
-            data = list(csv_dict_reader)
+            data = list(
+                helpers.dict_filter(
+                    csv_dict_reader,
+                    "open_time",
+                    "open",
+                    "high",
+                    "low",
+                    "close",
+                    "close_time",
+                )
+            )
 
         df = prepare_dataframe(data)
         tf_df_dict[timeframe] = df
@@ -75,6 +84,15 @@ def run(symbol_timeframes_arr):
 
 def main():
     set_options()
+
+    dir = "../symbols/csv"
+    filenames = [f for f in os.listdir(dir) if f.endswith(".csv")]
+    filenames.sort()  # sort works in-place
+    symbol_tfs_dict = helpers.group(filenames)
+    for k, v in symbol_tfs_dict.items():
+        v.sort(key=helpers.sort_lambda)
+        symbol_tfs_dict[k] = v
+    symbol_tfs_arr = [[k, v] for k, v in symbol_tfs_dict.items()]
 
     PARSER = argparse.ArgumentParser()
     PARSER.add_argument(
@@ -88,15 +106,6 @@ def main():
         "--time-series",
         help="Show last ts rows from timeseries instead of TA results",
     )
-
-    dir = "../symbols/csv"
-    filenames = [f for f in os.listdir(dir) if f.endswith(".csv")]
-    filenames.sort()  # sort works in-place
-    symbol_tfs_dict = helpers.group(filenames)
-    for k, v in symbol_tfs_dict.items():
-        v.sort(key=helpers.sort_lambda)
-        symbol_tfs_dict[k] = v
-    symbol_tfs_arr = [[k, v] for k, v in symbol_tfs_dict.items()]
 
     parsed_arguments = PARSER.parse_args(sys.argv[1:])
     if parsed_arguments.symbol != None:

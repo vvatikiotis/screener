@@ -18,6 +18,12 @@ def sort_lambda(v):
 
 
 #
+def dict_filter(it, *keys):
+    for d in it:
+        yield dict((k, d[k]) for k in keys)
+
+
+#
 def color(t):
     red = "\033[31m"
     green = "\033[32m"
