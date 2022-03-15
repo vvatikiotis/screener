@@ -8,7 +8,7 @@ def tabulate(series, tf_screened, color):
     headers = {"inside": "Inside Bar"}
 
     text = ""
-    for k, v in tf_screened:
+    for k, v in tf_screened.items():
         text += f"{k}: {v}" if v == True else ""
 
     return [
