@@ -9,6 +9,7 @@ def tabulate(series, tf_screened, color):
 
     for k, v in tf_screened.items():
         tf_screened[k] = color(v, "red") if v < 0 else color(v, "green")
+
     return [headers, tf_screened]
 
 
