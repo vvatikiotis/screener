@@ -14,6 +14,7 @@ import helpers
 import supertrend
 import bftb
 import inside_bar
+import from_bar_diffs
 
 #
 #
@@ -40,16 +41,31 @@ def prepare_dataframe(data):
 #
 # tf_df_dict: {'1d': df1, '12h': df2,...}
 #
-def run_indicators(tf_df_dict):
-    st_dict = supertrend.run_supertrend(tf_df_dict)
-    ib_dict = inside_bar.run_inside_bar(tf_df_dict)
-    if "1d" in tf_df_dict:
-        bftb_dict = bftb.run_btfd(tf_df_dict)
-        inds = {"indicator1": bftb_dict, "indicator2": st_dict, "indicator3": ib_dict}
-    else:
-        inds = {"indicator1": st_dict, "indicator2": ib_dict}
+def run_indicators(tf_df_dict, type):
+    indicator_results = {}
+    has1d = "1d" in tf_df_dict
+    if type == "supertrend":
+        st_dict = supertrend.run_supertrend(tf_df_dict)
+        ib_dict = inside_bar.run_inside_bar(tf_df_dict)
+    elif type == "diffs" and has1d:
+        diffs_dict = from_bar_diffs.run_from_bar_diffs(tf_df_dict)
 
-    return inds
+    if has1d:
+        bftb_dict = bftb.run_btfd(tf_df_dict)
+
+    if has1d:
+        indicator_results["indicator1"] = bftb_dict
+        if type == "supertrend":
+            indicator_results["indicator2"] = st_dict
+            indicator_results["indicator3"] = ib_dict
+        elif type == "diffs":
+            indicator_results["indicator2"] = diffs_dict
+    else:
+        if type == "supertrend":
+            indicator_results["indicator1"] = st_dict
+            indicator_results["indicator2"] = ib_dict
+
+    return indicator_results
 
 
 #
@@ -78,9 +94,14 @@ def run(symbol_timeframes_arr):
         df = prepare_dataframe(data)
         tf_df_dict[timeframe] = df
 
-    results = run_indicators(tf_df_dict)
+    results = run_indicators(tf_df_dict, use_analysis)
 
     return {"symbol": {"name": symbol}, **results}
+
+
+def pool_initializer(analysis):
+    global use_analysis
+    use_analysis = analysis
 
 
 def main():
@@ -108,6 +129,13 @@ def main():
         help="Show last ts rows from timeseries instead of TA results",
     )
 
+    PARSER.add_argument(
+        "-u",
+        "--use-analysis",
+        default="supertrend",
+        help="What to show? super (Supertrend) / diffs (for diffs)",
+    )
+
     parsed_arguments = PARSER.parse_args(sys.argv[1:])
     if parsed_arguments.symbol != None:
         symbol_tfs_arr = list(
@@ -123,19 +151,69 @@ def main():
         )
 
     # Enable it for many
-    pool = Pool(8)
+    pool = Pool(
+        processes=8,
+        initializer=pool_initializer,
+        initargs=(parsed_arguments.use_analysis,),
+    )
     results = pool.map(run, symbol_tfs_arr)
     pool.close()
     pool.join()
-    output(results, parsed_arguments.time_series)
+    output(results, parsed_arguments)
+
+
+# NOTE: to add an indicator, we MUST spacify an OUTPUT_ID and a tabulate function
+# inside the indicator module. The tabulate function MUST return:
+# [headers_dict, results_dict]
+def get_tabulate_func(module_id):
+    if module_id == supertrend.OUTPUT_ID:
+        return supertrend.tabulate
+    elif module_id == bftb.OUTPUT_ID:
+        return bftb.tabulate
+    elif module_id == inside_bar.OUTPUT_ID:
+        return inside_bar.tabulate
+    elif module_id == from_bar_diffs.OUTPUT_ID:
+        return from_bar_diffs.tabulate
 
 
 #
-def output(results, last=10):
-    if last == None:
-        color_and_print(results)
-    else:
-        print_series(results, last)
+def output(results, args):
+    last_rows_count = args.time_series
+    use_analysis = args.use_analysis
+
+    if last_rows_count == None:
+        if use_analysis == "supertrend":
+            print_supertrend(results)
+        elif use_analysis == "diffs":
+            print_diffs(results)
+    elif last_rows_count != None:
+        print_series(results, last_rows_count)
+
+
+def print_diffs(results):
+    headers = []
+    table = []
+
+    for i, symbol_dict in enumerate(results):
+        symbol = symbol_dict["symbol"]["name"]
+        headers.append({"symbol": "Symbol"})
+        table.append({"symbol": symbol})
+
+        for key, value in symbol_dict.items():
+            if (
+                key.startswith("indicator") == True
+                and value["output_id"] == "from_bar_diffs"
+            ):
+                tabulate_func = get_tabulate_func(value["output_id"])
+                [header, dict_] = tabulate_func(
+                    symbol_dict[key]["series"],
+                    symbol_dict[key]["screened"],
+                    colored,
+                )
+                headers[i] |= header  # |= Update headers[i] dict, in place
+                table[i] |= dict_
+
+    print(tabulate(table, headers=headers[0], tablefmt="fancy_grid"))
 
 
 #
@@ -144,19 +222,7 @@ def output(results, last=10):
 # {symbol: {name: ATOMUSDT}, indicator1: { name:'Supertrend', series: {1d: df},  screened: {1d: False, 12h: Buy}}, indicator2:{name:{}, series: {}, screened: {} } },
 # ]
 #
-def color_and_print(results):
-
-    # NOTE: to add an indicator, we MUST spacify an OUTPUT_ID and a tabulate function
-    # inside the indicator module. The tabulate function MUST return:
-    # [headers_dict, results_dict]
-    def get_tabulate_func(id):
-        if id == supertrend.OUTPUT_ID:
-            return supertrend.tabulate
-        elif id == bftb.OUTPUT_ID:
-            return bftb.tabulate
-        elif id == inside_bar.OUTPUT_ID:
-            return inside_bar.tabulate
-
+def print_supertrend(results):
     headers = []
     table = []
 

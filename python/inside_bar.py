@@ -30,21 +30,19 @@ def run_inside_bar(tf_df_dict, timeframes=["1w", "3d"]):
 
         return is_inside_bar
 
-    series_dict = {}
-    screened = {}
+    dict_ = {}
     for tf in timeframes:
         df = tf_df_dict[tf]
         ib = inside_bar(df)
-        series_dict[tf] = [ib]
-        screened[tf] = ib
+        dict_[tf] = [ib]
 
-    series = pd.DataFrame(series_dict).tail(1)
+    series = pd.DataFrame(dict_).tail(1)
 
     # series MUST be a Dataframe
-    # screend MUST be a dict
+    # screened MUST be a dict
     return {
         "name": f"Inside Bar - {timeframes}",
         "series": series,
-        "screened": screened,
+        "screened": dict_,
         "output_id": OUTPUT_ID,
     }
