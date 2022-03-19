@@ -6,6 +6,9 @@ OUTPUT_ID = "from_bar_diffs"
 def tabulate(series, tf_screened, color):
     l = len(series)
     headers = dict([(x, x) for x in range(l, 0, -1)])
+    for k, v in headers.items():
+        if k == 1:
+            headers[k] = "1 (Now)"
 
     for k, v in tf_screened.items():
         if v <= -3:

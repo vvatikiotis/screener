@@ -200,10 +200,7 @@ def print_diffs(results):
         table.append({"symbol": symbol})
 
         for key, value in symbol_dict.items():
-            if (
-                key.startswith("indicator") == True
-                and value["output_id"] == "from_bar_diffs"
-            ):
+            if key.startswith("indicator") == True:
                 tabulate_func = get_tabulate_func(value["output_id"])
                 [header, dict_] = tabulate_func(
                     symbol_dict[key]["series"],
