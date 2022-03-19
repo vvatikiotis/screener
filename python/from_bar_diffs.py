@@ -8,7 +8,14 @@ def tabulate(series, tf_screened, color):
     headers = dict([(x, x) for x in range(l, 0, -1)])
 
     for k, v in tf_screened.items():
-        tf_screened[k] = color(v, "red") if v < 0 else color(v, "green")
+        if v <= -3:
+            tf_screened[k] = color(v, "red")
+        if v > -3 and v < 0:
+            tf_screened[k] = color(v, "red", attrs=["dark"])
+        if v > 0 and v < 3:
+            tf_screened[k] = color(v, "green", attrs=["dark"])
+        if v >= 3:
+            tf_screened[k] = color(v, "green")
 
     return [headers, tf_screened]
 
