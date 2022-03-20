@@ -37,7 +37,9 @@ def run_from_bar_diffs(tf_df_dict, timeframe="1d", from_bar=10):
         close_from = close.iloc[-from_bar]
         percs_from = {}
         for i in range(1, from_bar):
-            percs_from[from_bar - i] = perc(close_from, close.iloc[-from_bar + i])
+            percs_from[from_bar - i] = round(
+                perc(close_from, close.iloc[-from_bar + i]), 2
+            )
 
         return percs_from
 
