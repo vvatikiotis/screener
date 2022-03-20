@@ -1,10 +1,9 @@
 import pandas as pd
-import helpers
 
 OUTPUT_ID = "inside_bar"
 
 
-def tabulate(series, tf_screened, color):
+def tabulate(series, tf_screened):
     headers = {"inside": "Inside Bar"}
 
     text = ""

@@ -4,7 +4,7 @@ import pandas as pd
 OUTPUT_ID = "bftb"
 
 
-def tabulate(series, tf_screened, color):
+def tabulate(series, tf_screened):
     headers = {"BftB": "BftB (low - high)"}
 
     high = "{:.2f}".format(series["BtfB_High"].iloc[-1])
@@ -49,7 +49,7 @@ def run_btfd(tf_df_dict, amount=10000, lookback=200):
     btfb = bang_for_buck(tf_df_dict["1d"], amount, lookback)
 
     return {
-        "name": f"Bang for the Buck, amount: {amount}, lookback: {lookback}",
+        "name": f"Bang for the Buck, amount: {amount}, lookback: {lookback}, 1d",
         "series": btfb,
         "screened": btfb["BtfB"],
         "output_id": OUTPUT_ID,

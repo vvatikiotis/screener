@@ -1,24 +1,29 @@
 import pandas as pd
+from termcolor import colored
+from datetime import datetime, timedelta
 
 OUTPUT_ID = "from_bar_diffs"
 
 
-def tabulate(series, tf_screened, color):
+def tabulate(series, tf_screened):
     l = len(series)
     headers = dict([(x, x) for x in range(l, 0, -1)])
+    today = datetime.now()
     for k, v in headers.items():
         if k == 1:
-            headers[k] = "1 (Now)"
+            headers[k] = "1 (Today)"
+        else:
+            headers[k] = (today - timedelta(days=k - 1)).strftime("%m/%d")
 
     for k, v in tf_screened.items():
         if v <= -3:
-            tf_screened[k] = color(v, "red")
+            tf_screened[k] = colored(v, "red")
         if v > -3 and v < 0:
-            tf_screened[k] = color(v, "red", attrs=["dark"])
+            tf_screened[k] = colored(v, "red", attrs=["dark"])
         if v > 0 and v < 3:
-            tf_screened[k] = color(v, "green", attrs=["dark"])
+            tf_screened[k] = colored(v, "green", attrs=["dark"])
         if v >= 3:
-            tf_screened[k] = color(v, "green")
+            tf_screened[k] = colored(v, "green")
 
     return [headers, tf_screened]
 
@@ -42,7 +47,7 @@ def run_from_bar_diffs(tf_df_dict, timeframe="1d", from_bar=10):
     # series MUST be a Dataframe
     # screened MUST be a dict
     return {
-        "name": f"{from_bar} bars, {timeframe} diff",
+        "name": f"Diffs, up to {from_bar} bars from today, {timeframe}",
         "series": series,
         "screened": screened,
         "output_id": OUTPUT_ID,

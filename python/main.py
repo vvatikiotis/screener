@@ -183,34 +183,11 @@ def output(results, args):
 
     if last_rows_count == None:
         if use_analysis == "supertrend":
-            print_supertrend(results)
+            print_tabular(results)
         elif use_analysis == "diffs":
-            print_diffs(results)
+            print_tabular(results)
     elif last_rows_count != None:
         print_series(results, last_rows_count)
-
-
-def print_diffs(results):
-    headers = []
-    table = []
-
-    for i, symbol_dict in enumerate(results):
-        symbol = symbol_dict["symbol"]["name"]
-        headers.append({"symbol": "Symbol"})
-        table.append({"symbol": symbol})
-
-        for key, value in symbol_dict.items():
-            if key.startswith("indicator") == True:
-                tabulate_func = get_tabulate_func(value["output_id"])
-                [header, dict_] = tabulate_func(
-                    symbol_dict[key]["series"],
-                    symbol_dict[key]["screened"],
-                    colored,
-                )
-                headers[i] |= header  # |= Update headers[i] dict, in place
-                table[i] |= dict_
-
-    print(tabulate(table, headers=headers[0], tablefmt="fancy_grid"))
 
 
 #
@@ -219,26 +196,30 @@ def print_diffs(results):
 # {symbol: {name: ATOMUSDT}, indicator1: { name:'Supertrend', series: {1d: df},  screened: {1d: False, 12h: Buy}}, indicator2:{name:{}, series: {}, screened: {} } },
 # ]
 #
-def print_supertrend(results):
+def print_tabular(results):
     headers = []
     table = []
+    titles = []
 
     for i, symbol_dict in enumerate(results):
         symbol = symbol_dict["symbol"]["name"]
         headers.append({"symbol": "Symbol"})
         table.append({"symbol": symbol})
+        titles.append([])
 
         for key, value in symbol_dict.items():
             if key.startswith("indicator") == True:
+                if i == 0:
+                    titles[i].append(f"--------- {value['name']} ---------")
                 tabulate_func = get_tabulate_func(value["output_id"])
                 [header, dict_] = tabulate_func(
                     symbol_dict[key]["series"],
                     symbol_dict[key]["screened"],
-                    helpers.color,
                 )
                 headers[i] |= header  # |= Update headers[i] dict, in place
                 table[i] |= dict_
 
+    print(*titles[0])
     print(tabulate(table, headers=headers[0], tablefmt="fancy_grid"))
 
 
