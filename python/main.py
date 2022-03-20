@@ -15,6 +15,7 @@ import supertrend
 import bftb
 import inside_bar
 import from_bar_diffs
+import tr_atr
 
 #
 #
@@ -49,6 +50,8 @@ def run_indicators(tf_df_dict, type):
         ib_dict = inside_bar.run_inside_bar(tf_df_dict)
     elif type == "diffs" and has1d:
         diffs_dict = from_bar_diffs.run_from_bar_diffs(tf_df_dict)
+    elif type == "tr_atr" and has1d:
+        tr_atr_dict = tr_atr.run_tr_atr(tf_df_dict)
 
     if has1d:
         bftb_dict = bftb.run_btfd(tf_df_dict)
@@ -60,6 +63,9 @@ def run_indicators(tf_df_dict, type):
             indicator_results["indicator3"] = ib_dict
         elif type == "diffs":
             indicator_results["indicator2"] = diffs_dict
+        elif type == "tr_atr":
+            indicator_results["indicator2"] = tr_atr_dict
+
     else:
         if type == "supertrend":
             indicator_results["indicator1"] = st_dict
@@ -133,7 +139,8 @@ def main():
         "-u",
         "--use-analysis",
         default="supertrend",
-        help="What to show? super (Supertrend) / diffs (for diffs)",
+        choices=["supertrend", "diffs", "tr_atr"],
+        help="Type of analysis",
     )
 
     parsed_arguments = PARSER.parse_args(sys.argv[1:])
@@ -174,6 +181,8 @@ def get_tabulate_func(module_id):
         return inside_bar.tabulate
     elif module_id == from_bar_diffs.OUTPUT_ID:
         return from_bar_diffs.tabulate
+    elif module_id == tr_atr.OUTPUT_ID:
+        return tr_atr.tabulate
 
 
 #
@@ -182,10 +191,7 @@ def output(results, args):
     use_analysis = args.use_analysis
 
     if last_rows_count == None:
-        if use_analysis == "supertrend":
-            print_tabular(results)
-        elif use_analysis == "diffs":
-            print_tabular(results)
+        print_tabular(results)
     elif last_rows_count != None:
         print_series(results, last_rows_count)
 

@@ -32,6 +32,8 @@ def run_from_bar_diffs(tf_df_dict, timeframe="1d", from_bar=10):
     def perc(from_, to_):
         return ((to_ - from_) / from_) * 100
 
+    #
+    # calclulates diffs from from_bar bar
     def from_bar_diffs(df, timeframe, from_bar):
         close = df[timeframe]["close"]
         close_from = close.iloc[-from_bar]
