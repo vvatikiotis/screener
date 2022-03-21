@@ -50,6 +50,7 @@ def run_btfd(tf_df_dict, amount=10000, lookback=200):
 
     return {
         "name": f"Bang for the Buck, amount: {amount}, lookback: {lookback}, 1d",
+        "desc": f"Bang for the Buck: from Radge, the higher the value the better.",
         "series": btfb,
         "screened": btfb["BtfB"],
         "output_id": OUTPUT_ID,

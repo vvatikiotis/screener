@@ -41,6 +41,7 @@ def run_inside_bar(tf_df_dict, timeframes=["1w", "3d"]):
     # screened MUST be a dict
     return {
         "name": f"Inside Bar - {timeframes}",
+        "desc": f" Inside bar: search if the inside bar pattern appears the previous 2 candles.",
         "series": series,
         "screened": dict_,
         "output_id": OUTPUT_ID,

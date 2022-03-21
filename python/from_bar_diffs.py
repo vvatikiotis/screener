@@ -52,6 +52,7 @@ def run_from_bar_diffs(tf_df_dict, timeframe="1d", from_bar=10):
     # screened MUST be a dict
     return {
         "name": f"Diffs, up to {from_bar} bars from today, {timeframe}",
+        "desc": f"Diffs: up to {from_bar} bars from today, in %. Diff from {from_bar}th bar to day, from {from_bar}th to yesterday, etc.Dim colors are less than 3% difference.",
         "series": series,
         "screened": screened,
         "output_id": OUTPUT_ID,

@@ -56,6 +56,7 @@ def run_tr_atr(tf_df_dict, timeframe="1d", from_bar=10):
     # screened MUST be a dict
     return {
         "name": f"Today % TR and last {from_bar} ATR14 % values, {timeframe}",
+        "desc": f"tr_atr: Compare today's tr with the latest ATR value, the previous ATR value, etc. In %. If -1 < diff < 1 color stays the same.",
         "series": series,
         "screened": screened,
         "output_id": OUTPUT_ID,

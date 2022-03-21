@@ -133,6 +133,7 @@ def run_supertrend(tf_df_dict, length=10, multiplier=2):
 
     return {
         "name": f"Supertrend, length: {length}, multiplier: {multiplier} ",
+        "desc": f"Supertrend: search for change of direction the last 3 candles.",
         "series": series,
         "screened": screened,
         "output_id": OUTPUT_ID,

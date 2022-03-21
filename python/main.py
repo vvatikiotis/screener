@@ -206,17 +206,20 @@ def print_tabular(results):
     headers = []
     table = []
     titles = []
+    descs = []
 
     for i, symbol_dict in enumerate(results):
         symbol = symbol_dict["symbol"]["name"]
         headers.append({"symbol": "Symbol"})
         table.append({"symbol": symbol})
         titles.append([])
+        descs.append([])
 
         for key, value in symbol_dict.items():
             if key.startswith("indicator") == True:
                 if i == 0:
                     titles[i].append(f"--------- {value['name']} ---------")
+                    descs[i].append(f"----- {value['desc']} -----")
                 tabulate_func = get_tabulate_func(value["output_id"])
                 [header, dict_] = tabulate_func(
                     symbol_dict[key]["series"],
@@ -227,6 +230,8 @@ def print_tabular(results):
 
     print(*titles[0])
     print(tabulate(table, headers=headers[0], tablefmt="fancy_grid"))
+    print("\n")
+    print(*[f"{x}\n" for x in descs[0]])
 
 
 #
