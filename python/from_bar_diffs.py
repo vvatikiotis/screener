@@ -11,7 +11,7 @@ def tabulate(series, tf_screened):
     today = datetime.now()
     for k, v in headers.items():
         if k == 1:
-            headers[k] = "1 (Today)"
+            headers[k] = "Today"
         else:
             headers[k] = (today - timedelta(days=k - 1)).strftime("%m/%d")
 
