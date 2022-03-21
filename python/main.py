@@ -16,6 +16,7 @@ import bftb
 import inside_bar
 import from_bar_diffs
 import tr_atr
+import prices_diff
 
 #
 #
@@ -52,6 +53,8 @@ def run_indicators(tf_df_dict, type):
         diffs_dict = from_bar_diffs.run_from_bar_diffs(tf_df_dict)
     elif type == "tr_atr" and has1d:
         tr_atr_dict = tr_atr.run_tr_atr(tf_df_dict)
+    elif type == "prices_diff":
+        prices_diff_dict = prices_diff.run_prices_diff(tf_df_dict)
 
     if has1d:
         bftb_dict = bftb.run_btfd(tf_df_dict)
@@ -63,13 +66,15 @@ def run_indicators(tf_df_dict, type):
             indicator_results["indicator3"] = ib_dict
         elif type == "diffs":
             indicator_results["indicator2"] = diffs_dict
-        elif type == "tr_atr":
-            indicator_results["indicator2"] = tr_atr_dict
+        elif type == "prices_diff":
+            indicator_results["indicator2"] = prices_diff_dict
 
     else:
         if type == "supertrend":
             indicator_results["indicator1"] = st_dict
             indicator_results["indicator2"] = ib_dict
+        elif type == "prices_diff":
+            indicator_results["indicator1"] = prices_diff_dict
 
     return indicator_results
 
@@ -139,7 +144,7 @@ def main():
         "-u",
         "--use-analysis",
         default="supertrend",
-        choices=["supertrend", "diffs", "tr_atr"],
+        choices=["supertrend", "diffs", "prices_diff", "tr_atr"],
         help="Type of analysis",
     )
 
@@ -183,6 +188,8 @@ def get_tabulate_func(module_id):
         return from_bar_diffs.tabulate
     elif module_id == tr_atr.OUTPUT_ID:
         return tr_atr.tabulate
+    elif module_id == prices_diff.OUTPUT_ID:
+        return prices_diff.tabulate
 
 
 #
