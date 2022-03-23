@@ -16,13 +16,13 @@ def tabulate(series, tf_screened):
             headers[k] = (today - timedelta(days=k - 1)).strftime("%m/%d")
 
     for k, v in tf_screened.items():
-        if v <= -2:
+        if v <= -1.5:
             tf_screened[k] = colored(v, "red")
-        if v > -2 and v < 0:
+        if v > -1.5 and v < 0:
             tf_screened[k] = colored(v, "red", attrs=["dark"])
-        if v > 0 and v < 2:
+        if v > 0 and v < 1.5:
             tf_screened[k] = colored(v, "green", attrs=["dark"])
-        if v >= 2:
+        if v >= 1.5:
             tf_screened[k] = colored(v, "green")
 
     return [headers, tf_screened]
@@ -52,7 +52,7 @@ def run_prices_diff(tf_df_dict, timeframe="1d", last_nth=10):
     # screened MUST be a dict
     return {
         "name": f"Prices diffs, last {last_nth} bars, {timeframe}",
-        "desc": f"Prices Diffs: from bar to bar, in %. Dim colors are less than 2% difference.",
+        "desc": f"Prices Diffs: from bar to bar, in %. Dim colors are less than 1.5% difference.",
         "series": series,
         "screened": screened,
         "output_id": OUTPUT_ID,

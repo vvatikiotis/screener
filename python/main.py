@@ -8,6 +8,7 @@ import argparse
 from multiprocessing import Pool
 from termcolor import colored
 from tabulate import tabulate
+from datetime import datetime
 
 # our own
 import helpers
@@ -49,11 +50,11 @@ def run_indicators(tf_df_dict, type):
     if type == "supertrend":
         st_dict = supertrend.run_supertrend(tf_df_dict)
         ib_dict = inside_bar.run_inside_bar(tf_df_dict)
-    elif type == "diffs" and has1d:
+    elif type == "10_diff" and has1d:
         diffs_dict = from_bar_diffs.run_from_bar_diffs(tf_df_dict)
     elif type == "tr_atr" and has1d:
         tr_atr_dict = tr_atr.run_tr_atr(tf_df_dict)
-    elif type == "prices_diff":
+    elif type == "price_diff" and has1d:
         prices_diff_dict = prices_diff.run_prices_diff(tf_df_dict)
 
     if has1d:
@@ -64,17 +65,17 @@ def run_indicators(tf_df_dict, type):
         if type == "supertrend":
             indicator_results["indicator2"] = st_dict
             indicator_results["indicator3"] = ib_dict
-        elif type == "diffs":
+        elif type == "10_diff":
             indicator_results["indicator2"] = diffs_dict
-        elif type == "prices_diff":
+        elif type == "price_diff":
             indicator_results["indicator2"] = prices_diff_dict
 
     else:
         if type == "supertrend":
             indicator_results["indicator1"] = st_dict
             indicator_results["indicator2"] = ib_dict
-        elif type == "prices_diff":
-            indicator_results["indicator1"] = prices_diff_dict
+        # elif type == "price_diff":
+        #     indicator_results["indicator1"] = prices_diff_dict
 
     return indicator_results
 
@@ -105,6 +106,7 @@ def run(symbol_timeframes_arr):
         df = prepare_dataframe(data)
         tf_df_dict[timeframe] = df
 
+    # use_analysis global var per process
     results = run_indicators(tf_df_dict, use_analysis)
 
     return {"symbol": {"name": symbol}, **results}
@@ -144,7 +146,7 @@ def main():
         "-u",
         "--use-analysis",
         default="supertrend",
-        choices=["supertrend", "diffs", "prices_diff", "tr_atr"],
+        choices=["supertrend", "10_diff", "price_diff", "tr_atr"],
         help="Type of analysis",
     )
 
@@ -195,7 +197,6 @@ def get_tabulate_func(module_id):
 #
 def output(results, args):
     last_rows_count = args.time_series
-    use_analysis = args.use_analysis
 
     if last_rows_count == None:
         print_tabular(results)
@@ -235,6 +236,8 @@ def print_tabular(results):
                 headers[i] |= header  # |= Update headers[i] dict, in place
                 table[i] |= dict_
 
+    today = datetime.now()
+    print(f"--------- {colored(today, 'yellow')} ---------\n")
     print(*titles[0])
     print(tabulate(table, headers=headers[0], tablefmt="fancy_grid"))
     print("\n")
@@ -248,6 +251,9 @@ def print_tabular(results):
 # ]
 #
 def print_series(results, last):
+    today = datetime.now()
+    print(f"--------- {colored(today, 'yellow')} ---------\n")
+
     for i, symbol_dict in enumerate(results):  # iterate per symbol
         symbol = symbol_dict["symbol"]["name"]
         print(f"\n\n----------------- ", colored(symbol, "green"), " -----------------")
