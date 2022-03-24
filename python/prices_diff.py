@@ -9,6 +9,7 @@ def tabulate(series, tf_screened):
     l = len(series)
     headers = dict([(x, x) for x in range(l, 0, -1)])
     today = datetime.now()
+    timeframe = series.columns.values[0].split("_")[1]
     for k, v in headers.items():
         if k == 1:
             headers[k] = "Today"
@@ -46,7 +47,7 @@ def run_prices_diff(tf_df_dict, timeframe="1d", last_nth=10):
         return percs_from
 
     screened = prices_diff(tf_df_dict, timeframe, last_nth)
-    series = pd.DataFrame({"diffs": screened})
+    series = pd.DataFrame({f"diffs_{timeframe}": screened})
 
     # series MUST be a Dataframe
     # screened MUST be a dict

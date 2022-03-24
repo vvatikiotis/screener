@@ -50,7 +50,7 @@ def run_tr_atr(tf_df_dict, timeframe="1d", from_bar=10):
         return tr_atrs
 
     screened = tr_atr(tf_df_dict, timeframe, from_bar)
-    series = pd.DataFrame({"tr_atr": screened})
+    series = pd.DataFrame({f"tratr_{timeframe}": screened})
 
     # series MUST be a Dataframe
     # screened MUST be a dict

@@ -44,38 +44,57 @@ def prepare_dataframe(data):
 #
 # tf_df_dict: {'1d': df1, '12h': df2,...}
 #
-def run_indicators(tf_df_dict, type):
+def run_indicators(tf_df_dict, type, timeframe=None):
     indicator_results = {}
-    has1d = "1d" in tf_df_dict
-    if type == "supertrend":
-        st_dict = supertrend.run_supertrend(tf_df_dict)
-        ib_dict = inside_bar.run_inside_bar(tf_df_dict)
-    elif type == "10_diff" and has1d:
-        diffs_dict = from_bar_diffs.run_from_bar_diffs(tf_df_dict)
-    elif type == "tr_atr" and has1d:
-        tr_atr_dict = tr_atr.run_tr_atr(tf_df_dict)
-    elif type == "price_diff" and has1d:
-        prices_diff_dict = prices_diff.run_prices_diff(tf_df_dict)
+    indicator2 = None
 
-    if has1d:
-        bftb_dict = bftb.run_btfd(tf_df_dict)
-
-    if has1d:
-        indicator_results["indicator1"] = bftb_dict
+    if timeframe == None:
+        if (
+            type == "supertrend"
+            or type == "10_diff"
+            or type == "price_diff"
+            or type == "tr_atr"
+        ):
+            indicator1 = bftb.run_btfd(tf_df_dict)
+        # Inside bar has no meaning in timeframes other that 1w and 3d
         if type == "supertrend":
-            indicator_results["indicator2"] = st_dict
-            indicator_results["indicator3"] = ib_dict
-        elif type == "10_diff":
-            indicator_results["indicator2"] = diffs_dict
-        elif type == "price_diff":
-            indicator_results["indicator2"] = prices_diff_dict
+            indicator2 = supertrend.run_supertrend(tf_df_dict)
+        # all the other analysis need a tf spec
+        if type == "10_diff":
+            indicator2 = from_bar_diffs.run_from_bar_diffs(tf_df_dict)
+        if type == "price_diff":
+            indicator2 = prices_diff.run_prices_diff(tf_df_dict)
+        if type == "tr_atr":
+            indicator2 = tr_atr.run_tr_atr(tf_df_dict)
 
     else:
-        if type == "supertrend":
-            indicator_results["indicator1"] = st_dict
-            indicator_results["indicator2"] = ib_dict
-        # elif type == "price_diff":
-        #     indicator_results["indicator1"] = prices_diff_dict
+        tf = timeframe[0]
+        if tf == "1d":
+            indicator1 = bftb.run_btfd(tf_df_dict)
+            if type == "supertrend":
+                indicator2 = supertrend.run_supertrend(tf_df_dict)
+            # all the other analysis need a tf spec
+            if type == "10_diff":
+                indicator2 = from_bar_diffs.run_from_bar_diffs(tf_df_dict)
+            if type == "price_diff":
+                indicator2 = prices_diff.run_prices_diff(tf_df_dict)
+            if type == "tr_atr":
+                indicator2 = tr_atr.run_tr_atr(tf_df_dict)
+
+        else:
+            if type == "supertrend":
+                indicator1 = supertrend.run_supertrend(tf_df_dict)
+            # all the other analysis need a tf spec
+            if type == "10_diff":
+                indicator1 = from_bar_diffs.run_from_bar_diffs(tf_df_dict, tf)
+            if type == "price_diff":
+                indicator1 = prices_diff.run_prices_diff(tf_df_dict, tf)
+            if type == "tr_atr":
+                indicator1 = tr_atr.run_tr_atr(tf_df_dict, tf)
+
+    indicator_results = {"indicator1": indicator1}
+    if indicator2 != None:
+        indicator_results["indicator2"] = indicator2
 
     return indicator_results
 
@@ -106,15 +125,17 @@ def run(symbol_timeframes_arr):
         df = prepare_dataframe(data)
         tf_df_dict[timeframe] = df
 
-    # use_analysis global var per process
-    results = run_indicators(tf_df_dict, use_analysis)
+    # use_analysis, use_timeframe global vars per process
+    results = run_indicators(tf_df_dict, use_analysis, use_timeframe)
 
     return {"symbol": {"name": symbol}, **results}
 
 
-def pool_initializer(analysis):
+def pool_initializer(analysis, timeframe):
     global use_analysis
+    global use_timeframe
     use_analysis = analysis
+    use_timeframe = timeframe
 
 
 def main():
@@ -164,11 +185,23 @@ def main():
             )
         )
 
+    if (
+        parsed_arguments.timeframe != None
+        and len(parsed_arguments.timeframe) > 1
+        and parsed_arguments.use_analysis != "supertrend"
+    ):
+        print(
+            f"This analysis supports only 1 timeframe. Will use only {parsed_arguments.timeframe[0]}, the rest are ignored"
+        )
+
     # Enable it for many
     pool = Pool(
         processes=8,
         initializer=pool_initializer,
-        initargs=(parsed_arguments.use_analysis,),
+        initargs=(
+            parsed_arguments.use_analysis,
+            parsed_arguments.timeframe,
+        ),
     )
     results = pool.map(run, symbol_tfs_arr)
     pool.close()
@@ -184,14 +217,14 @@ def get_tabulate_func(module_id):
         return supertrend.tabulate
     elif module_id == bftb.OUTPUT_ID:
         return bftb.tabulate
-    elif module_id == inside_bar.OUTPUT_ID:
-        return inside_bar.tabulate
     elif module_id == from_bar_diffs.OUTPUT_ID:
         return from_bar_diffs.tabulate
     elif module_id == tr_atr.OUTPUT_ID:
         return tr_atr.tabulate
     elif module_id == prices_diff.OUTPUT_ID:
         return prices_diff.tabulate
+    elif module_id == inside_bar.OUTPUT_ID:
+        return inside_bar.tabulate
 
 
 #
