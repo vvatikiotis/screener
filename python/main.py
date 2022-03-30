@@ -158,6 +158,12 @@ def main():
         "-t", "--timeframe", nargs="+", help="Run for timeframe or list of timeframes"
     )
     PARSER.add_argument(
+        "-sort",
+        "--sort-series",
+        choices=["asc", "desc"],
+        help="WIP Sort last column",
+    )
+    PARSER.add_argument(
         "-ts",
         "--time-series",
         help="Show last ts rows from timeseries instead of TA results",
@@ -230,11 +236,12 @@ def get_tabulate_func(module_id):
 #
 def output(results, args):
     last_rows_count = args.time_series
+    sort = args.sort_series
 
     if last_rows_count == None:
-        print_tabular(results)
+        print_tabular(results, sort)
     elif last_rows_count != None:
-        print_series(results, last_rows_count)
+        print_series(results, last_rows_count, sort)
 
 
 #
@@ -243,12 +250,12 @@ def output(results, args):
 # {symbol: {name: ATOMUSDT}, indicator1: { name:'Supertrend', series: {1d: df},  screened: {1d: False, 12h: Buy}}, indicator2:{name:{}, series: {}, screened: {} } },
 # ]
 #
-def print_tabular(results):
+def print_tabular(results, sort=None):
     headers = []
     table = []
     titles = []
     descs = []
-
+    # print(results)
     for i, symbol_dict in enumerate(results):
         symbol = symbol_dict["symbol"]["name"]
         headers.append({"symbol": "Symbol"})
@@ -283,7 +290,7 @@ def print_tabular(results):
 # {symbol: {name: ATOMUSDT}, indicator1: { name:'Supertrend', series: {1d: df},  screened: {1d: False, 12h: Buy}}, indicator2:{name:{}, series: {}, screened: {} } },
 # ]
 #
-def print_series(results, last):
+def print_series(results, last, sort=None):
     today = datetime.now()
     print(f"--------- {colored(today, 'yellow')} ---------\n")
 

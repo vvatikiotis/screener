@@ -19,14 +19,18 @@ def tabulate(series, tf_screened):
             headers[k] = (today - timedelta(days=k - 1)).strftime("%m/%d")
 
     for k, v in tf_screened.items():
-        if v <= -1.5:
+        if v <= -15:
+            tf_screened[k] = colored(v, "white", "on_red")
+        if v <= -5 and v > -15:
             tf_screened[k] = colored(v, "red")
-        if v > -1.5 and v < 0:
+        if v > -5 and v < 0:
             tf_screened[k] = colored(v, "red", attrs=["dark"])
-        if v > 0 and v < 1.5:
+        if v > 0 and v < 5:
             tf_screened[k] = colored(v, "green", attrs=["dark"])
-        if v >= 1.5:
+        if v >= 5 and v < 15:
             tf_screened[k] = colored(v, "green")
+        if v >= 15:
+            tf_screened[k] = colored(v, "grey", "on_green")
 
     return [headers, tf_screened]
 
