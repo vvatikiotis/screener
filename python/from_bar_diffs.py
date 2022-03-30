@@ -9,7 +9,6 @@ def tabulate(series, tf_screened):
     l = len(series)
     headers = dict([(x, x) for x in range(l, 0, -1)])
     today = datetime.now()
-    print(series)
     for k, v in headers.items():
         if k == 1:
             headers[k] = "Today"
@@ -47,7 +46,7 @@ def run_from_bar_diffs(tf_df_dict, timeframe="1d", from_bar=10):
         return percs_from
 
     screened = from_bar_diffs(tf_df_dict, timeframe, from_bar)
-    series = pd.DataFrame({f"diffs_{timeframe}": screened})
+    series = pd.DataFrame({f"from_bar_diffs_{timeframe}": screened})
 
     # series MUST be a Dataframe
     # screened MUST be a dict
