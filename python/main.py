@@ -44,7 +44,7 @@ def prepare_dataframe(data):
 #
 # tf_df_dict: {'1d': df1, '12h': df2,...}
 #
-def run_indicators(tf_df_dict, type, timeframe=None):
+def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
     indicator_results = {}
     indicator2 = None
 
@@ -61,11 +61,13 @@ def run_indicators(tf_df_dict, type, timeframe=None):
             indicator2 = supertrend.run_supertrend(tf_df_dict)
         # all the other analysis need a tf spec
         if type == "10_diff":
-            indicator2 = from_bar_diffs.run_from_bar_diffs(tf_df_dict)
+            indicator2 = from_bar_diffs.run_from_bar_diffs(
+                tf_df_dict, from_bar=parameter
+            )
         if type == "price_diff":
-            indicator2 = prices_diff.run_prices_diff(tf_df_dict)
+            indicator2 = prices_diff.run_prices_diff(tf_df_dict, last_nth=parameter)
         if type == "tr_atr":
-            indicator2 = tr_atr.run_tr_atr(tf_df_dict)
+            indicator2 = tr_atr.run_tr_atr(tf_df_dict, from_bar=parameter)
 
     else:
         tf = timeframe[0]
@@ -125,17 +127,20 @@ def run(symbol_timeframes_arr):
         df = prepare_dataframe(data)
         tf_df_dict[timeframe] = df
 
-    # use_analysis, use_timeframe global vars per process
-    results = run_indicators(tf_df_dict, use_analysis, use_timeframe)
+    # use_analysis, use_timeframe, use_paramter  global vars per process
+    results = run_indicators(tf_df_dict, use_analysis, use_timeframe, use_parameter)
 
     return {"symbol": {"name": symbol}, **results}
 
 
-def pool_initializer(analysis, timeframe):
+def pool_initializer(analysis, timeframe, parameter):
     global use_analysis
     global use_timeframe
+    global use_parameter
+
     use_analysis = analysis
     use_timeframe = timeframe
+    use_parameter = parameter
 
 
 def main():
@@ -176,6 +181,11 @@ def main():
         choices=["supertrend", "10_diff", "price_diff", "tr_atr"],
         help="Type of analysis",
     )
+    PARSER.add_argument(
+        "-p",
+        "--parameter",
+        help="Specify lookback window size (integer) for 10_diff, price_diff and tr_atr analysis",
+    )
 
     parsed_arguments = PARSER.parse_args(sys.argv[1:])
     if parsed_arguments.symbol != None:
@@ -200,6 +210,19 @@ def main():
             f"This analysis supports only 1 timeframe. Will use only {parsed_arguments.timeframe[0]}, the rest are ignored"
         )
 
+    parameter = 10
+    if parsed_arguments.parameter != None:
+        if (
+            parsed_arguments.use_analysis != "10_diff"
+            and parsed_arguments.use_analysis != "price_diff"
+            and parsed_arguments.use_analysis != "tr_atr"
+        ):
+            print(
+                f"Only 10_diff, price_diff and tr_atr support -p. Will run {parsed_arguments.use_analysis} with default arguments"
+            )
+        else:
+            parameter = int(parsed_arguments.parameter)
+
     # Enable it for many
     pool = Pool(
         processes=8,
@@ -207,6 +230,7 @@ def main():
         initargs=(
             parsed_arguments.use_analysis,
             parsed_arguments.timeframe,
+            parameter,
         ),
     )
     results = pool.map(run, symbol_tfs_arr)

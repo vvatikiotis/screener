@@ -42,10 +42,10 @@ def run_tr_atr(tf_df_dict, timeframe="1d", from_bar=10):
         tr_atrs = {}
 
         for i in range(1, from_bar):
-            tr_atrs[from_bar - i] = (
-                atr.iloc[-from_bar + i] / close.iloc[-from_bar + i]
-            ) * 100
-        tr_atrs[0] = (tr.iloc[-1] / close.iloc[-1]) * 100
+            tr_atrs[from_bar - i] = round(
+                (atr.iloc[-from_bar + i] / close.iloc[-from_bar + i]) * 100, 2
+            )
+        tr_atrs[0] = round((tr.iloc[-1] / close.iloc[-1]) * 100, 2)
 
         return tr_atrs
 
