@@ -51,7 +51,7 @@ def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
     if timeframe == None:
         if (
             type == "supertrend"
-            or type == "10_diff"
+            or type == "from_diff"
             or type == "price_diff"
             or type == "tr_atr"
         ):
@@ -60,7 +60,7 @@ def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
         if type == "supertrend":
             indicator2 = supertrend.run_supertrend(tf_df_dict)
         # all the other analysis need a tf spec
-        if type == "10_diff":
+        if type == "from_diff":
             indicator2 = from_bar_diffs.run_from_bar_diffs(
                 tf_df_dict, from_bar=parameter
             )
@@ -76,7 +76,7 @@ def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
             if type == "supertrend":
                 indicator2 = supertrend.run_supertrend(tf_df_dict)
             # all the other analysis need a tf spec
-            if type == "10_diff":
+            if type == "from_diff":
                 indicator2 = from_bar_diffs.run_from_bar_diffs(tf_df_dict)
             if type == "price_diff":
                 indicator2 = prices_diff.run_prices_diff(tf_df_dict)
@@ -87,7 +87,7 @@ def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
             if type == "supertrend":
                 indicator1 = supertrend.run_supertrend(tf_df_dict)
             # all the other analysis need a tf spec
-            if type == "10_diff":
+            if type == "from_diff":
                 indicator1 = from_bar_diffs.run_from_bar_diffs(tf_df_dict, tf)
             if type == "price_diff":
                 indicator1 = prices_diff.run_prices_diff(tf_df_dict, tf)
@@ -163,28 +163,27 @@ def main():
         "-t", "--timeframe", nargs="+", help="Run for timeframe or list of timeframes"
     )
     PARSER.add_argument(
+        "-ts",
+        "--time-series",
+        help="Show last ts rows from timeseries instead of TA results",
+    )
+    PARSER.add_argument(
         "-sort",
         "--sort-series",
         choices=["asc", "desc"],
         help="WIP Sort last column",
     )
     PARSER.add_argument(
-        "-ts",
-        "--time-series",
-        help="Show last ts rows from timeseries instead of TA results",
-    )
-
-    PARSER.add_argument(
         "-u",
         "--use-analysis",
         default="supertrend",
-        choices=["supertrend", "10_diff", "price_diff", "tr_atr"],
+        choices=["supertrend", "from_diff", "price_diff", "tr_atr"],
         help="Type of analysis",
     )
     PARSER.add_argument(
         "-p",
         "--parameter",
-        help="Specify lookback window size (integer) for 10_diff, price_diff and tr_atr analysis",
+        help="Specify lookback window size (integer) for from_diff, price_diff and tr_atr analysis",
     )
 
     parsed_arguments = PARSER.parse_args(sys.argv[1:])
@@ -213,12 +212,12 @@ def main():
     parameter = 10
     if parsed_arguments.parameter != None:
         if (
-            parsed_arguments.use_analysis != "10_diff"
+            parsed_arguments.use_analysis != "from_diff"
             and parsed_arguments.use_analysis != "price_diff"
             and parsed_arguments.use_analysis != "tr_atr"
         ):
             print(
-                f"Only 10_diff, price_diff and tr_atr support -p. Will run {parsed_arguments.use_analysis} with default arguments"
+                f"Only from_diff, price_diff and tr_atr support -p. Will run {parsed_arguments.use_analysis} with default arguments"
             )
         else:
             parameter = int(parsed_arguments.parameter)
