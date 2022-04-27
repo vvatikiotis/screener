@@ -1,6 +1,6 @@
 import pandas as pd
-from termcolor import colored
 from datetime import datetime, timedelta
+from sty import bg, fg, rs, ef
 
 OUTPUT_ID = "from_bar_diffs"
 
@@ -11,23 +11,27 @@ def tabulate(series, tf_screened):
     today = datetime.now()
     for k, v in headers.items():
         if k == 1:
-            headers[k] = "Today"
+            headers[k] = "Now"
         else:
             headers[k] = (today - timedelta(days=k - 1)).strftime("%m/%d")
 
     for k, v in tf_screened.items():
-        if v <= -15:
-            tf_screened[k] = colored(v, "white", "on_red")
+        if v <= -30:
+            tf_screened[k] = bg(255, 0, 0) + fg.white + str(v) + rs.all
+        if v <= -15 and v > -30:
+            tf_screened[k] = bg(190, 0, 0) + fg.li_grey + str(v) + rs.all
         if v <= -5 and v > -15:
-            tf_screened[k] = colored(v, "red")
+            tf_screened[k] = fg(255, 0, 0) + str(v) + rs.all
         if v > -5 and v < 0:
-            tf_screened[k] = colored(v, "red", attrs=["dark"])
+            tf_screened[k] = ef.dim + fg(255, 0, 0) + str(v) + rs.all
         if v > 0 and v < 5:
-            tf_screened[k] = colored(v, "green", attrs=["dark"])
+            tf_screened[k] = ef.dim + fg(0, 255, 0) + str(v) + rs.all
         if v >= 5 and v < 15:
-            tf_screened[k] = colored(v, "green")
-        if v >= 15:
-            tf_screened[k] = colored(v, "grey", "on_green")
+            tf_screened[k] = fg(0, 255, 0) + str(v) + rs.all
+        if v >= 15 and v < 30:
+            tf_screened[k] = bg(0, 200, 0) + fg.black + str(v) + rs.all
+        if v >= 30:
+            tf_screened[k] = bg(0, 255, 0) + fg.black + str(v) + rs.all
 
     return [headers, tf_screened]
 
@@ -56,7 +60,7 @@ def run_from_bar_diffs(tf_df_dict, timeframe="1d", from_bar=10):
     # screened MUST be a dict
     return {
         "name": f"Diffs, up to {from_bar} bars from today, {timeframe}",
-        "desc": f"Diffs: up to {from_bar} bars from today, in %. Diff from {from_bar}th bar to day, from {from_bar}th to yesterday, etc.Dim colors are less than 3% difference.",
+        "desc": f"Diffs: up to {from_bar} bars from Now, in %. Diff from {from_bar}th bar to today, from {from_bar}th to yesterday, etc. Ranges: 0-5, 5-15, 15-30, 30+. ",
         "series": series,
         "screened": screened,
         "output_id": OUTPUT_ID,

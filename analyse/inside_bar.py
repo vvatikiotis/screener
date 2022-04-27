@@ -19,6 +19,10 @@ def tabulate(series, tf_screened):
 # TODO: Need to check if user excludes 1w and 3d in the analysis.
 # This should probably be done in main.py
 def run_inside_bar(tf_df_dict, timeframes=["1w", "3d"]):
+    """
+    Inside nar
+    """
+
     def inside_bar(df):
         current = df.iloc[-1]
         previous = df.iloc[-2]

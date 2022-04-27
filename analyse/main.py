@@ -77,22 +77,28 @@ def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
                 indicator2 = supertrend.run_supertrend(tf_df_dict)
             # all the other analysis need a tf spec
             if type == "from_diff":
-                indicator2 = from_bar_diffs.run_from_bar_diffs(tf_df_dict)
+                indicator2 = from_bar_diffs.run_from_bar_diffs(
+                    tf_df_dict, from_bar=parameter
+                )
             if type == "price_diff":
-                indicator2 = prices_diff.run_prices_diff(tf_df_dict)
+                indicator2 = prices_diff.run_prices_diff(tf_df_dict, last_nth=parameter)
             if type == "tr_atr":
-                indicator2 = tr_atr.run_tr_atr(tf_df_dict)
+                indicator2 = tr_atr.run_tr_atr(tf_df_dict, from_bar=parameter)
 
         else:
             if type == "supertrend":
                 indicator1 = supertrend.run_supertrend(tf_df_dict)
             # all the other analysis need a tf spec
             if type == "from_diff":
-                indicator1 = from_bar_diffs.run_from_bar_diffs(tf_df_dict, tf)
+                indicator1 = from_bar_diffs.run_from_bar_diffs(
+                    tf_df_dict, tf, from_bar=parameter
+                )
             if type == "price_diff":
-                indicator1 = prices_diff.run_prices_diff(tf_df_dict, tf)
+                indicator1 = prices_diff.run_prices_diff(
+                    tf_df_dict, tf, last_nth=parameter
+                )
             if type == "tr_atr":
-                indicator1 = tr_atr.run_tr_atr(tf_df_dict, tf)
+                indicator1 = tr_atr.run_tr_atr(tf_df_dict, tf, from_bar=parameter)
 
     indicator_results = {"indicator1": indicator1}
     if indicator2 != None:
