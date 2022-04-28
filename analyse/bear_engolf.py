@@ -29,8 +29,12 @@ def run_bear_engolf(tf_df_dict):
         previous = df.iloc[-2]
         b4_previous = df.iloc[-3]
         is_bearish_engolfing = (
-            b4_previous["high"] <= previous["high"]
-            and b4_previous["low"] >= previous["low"]
+            b4_previous["close"] != b4_previous["open"]
+            and previous["close"] != previous["open"]
+            and (
+                b4_previous["close"] <= previous["open"]
+                and b4_previous["open"] >= previous["close"]
+            )
         )
 
         return is_bearish_engolfing
