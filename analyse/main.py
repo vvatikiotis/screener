@@ -18,7 +18,7 @@ import from_bar_diffs
 import prices_diff
 import tr_atr
 import inside_bar
-import bear_engolf
+import bear_engulf
 
 #
 #
@@ -55,7 +55,7 @@ def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
             or type == "from_diff"
             or type == "price_diff"
             or type == "tr_atr"
-            or type == "bear_engolf"
+            or type == "bear_engulf"
         ):
             indicator1 = bftb.run_btfd(tf_df_dict)
         # Inside bar has no meaning in timeframes other that 1w and 3d
@@ -70,8 +70,8 @@ def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
             indicator2 = prices_diff.run_prices_diff(tf_df_dict, last_nth=parameter)
         if type == "tr_atr":
             indicator2 = tr_atr.run_tr_atr(tf_df_dict, from_bar=parameter)
-        if type == "bear_engolf":
-            indicator2 = bear_engolf.run_bear_engolf(tf_df_dict)
+        if type == "bear_engulf":
+            indicator2 = bear_engulf.run_bear_engulf(tf_df_dict)
 
     else:
         tf = timeframe[0]
@@ -79,8 +79,8 @@ def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
             indicator1 = bftb.run_btfd(tf_df_dict)
             if type == "supertrend":
                 indicator2 = supertrend.run_supertrend(tf_df_dict)
-            if type == "bear_engolf":
-                indicator2 = bear_engolf.run_bear_engolf(tf_df_dict)
+            if type == "bear_engulf":
+                indicator2 = bear_engulf.run_bear_engulf(tf_df_dict)
             # all the other analysis need a tf spec
             if type == "from_diff":
                 indicator2 = from_bar_diffs.run_from_bar_diffs(
@@ -94,8 +94,8 @@ def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
         else:
             if type == "supertrend":
                 indicator1 = supertrend.run_supertrend(tf_df_dict)
-            if type == "bear_engolf":
-                indicator1 = bear_engolf.run_bear_engolf(tf_df_dict)
+            if type == "bear_engulf":
+                indicator1 = bear_engulf.run_bear_engulf(tf_df_dict)
             # all the other analysis need a tf spec
             if type == "from_diff":
                 indicator1 = from_bar_diffs.run_from_bar_diffs(
@@ -191,7 +191,7 @@ def main():
         "-u",
         "--use-analysis",
         default="supertrend",
-        choices=["supertrend", "from_diff", "price_diff", "tr_atr", "bear_engolf"],
+        choices=["supertrend", "from_diff", "price_diff", "tr_atr", "bear_engulf"],
         help="Type of analysis",
     )
     PARSER.add_argument(
@@ -218,7 +218,7 @@ def main():
         parsed_arguments.timeframe != None
         and len(parsed_arguments.timeframe) > 1
         and parsed_arguments.use_analysis != "supertrend"
-        and parsed_arguments.use_analysis != "bear_engolf"
+        and parsed_arguments.use_analysis != "bear_engulf"
     ):
         print(
             f"This analysis supports only 1 timeframe. Will use only {parsed_arguments.timeframe[0]}, the rest are ignored"
@@ -269,8 +269,8 @@ def get_tabulate_func(module_id):
         return prices_diff.tabulate
     elif module_id == inside_bar.OUTPUT_ID:
         return inside_bar.tabulate
-    elif module_id == bear_engolf.OUTPUT_ID:
-        return bear_engolf.tabulate
+    elif module_id == bear_engulf.OUTPUT_ID:
+        return bear_engulf.tabulate
 
 
 #
