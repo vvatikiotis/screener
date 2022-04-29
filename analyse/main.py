@@ -18,7 +18,7 @@ import from_bar_diffs
 import prices_diff
 import tr_atr
 import inside_bar
-import bear_engulf
+import engulfing_pattern
 
 #
 #
@@ -56,6 +56,7 @@ def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
             or type == "price_diff"
             or type == "tr_atr"
             or type == "bear_engulf"
+            or type == "bull_engulf"
         ):
             indicator1 = bftb.run_btfd(tf_df_dict)
         # Inside bar has no meaning in timeframes other that 1w and 3d
@@ -71,7 +72,13 @@ def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
         if type == "tr_atr":
             indicator2 = tr_atr.run_tr_atr(tf_df_dict, from_bar=parameter)
         if type == "bear_engulf":
-            indicator2 = bear_engulf.run_bear_engulf(tf_df_dict)
+            indicator2 = engulfing_pattern.run_engulfing_pattern(
+                tf_df_dict, type="bear"
+            )
+        if type == "bull_engulf":
+            indicator2 = engulfing_pattern.run_engulfing_pattern(
+                tf_df_dict, type="bull"
+            )
 
     else:
         tf = timeframe[0]
@@ -80,7 +87,13 @@ def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
             if type == "supertrend":
                 indicator2 = supertrend.run_supertrend(tf_df_dict)
             if type == "bear_engulf":
-                indicator2 = bear_engulf.run_bear_engulf(tf_df_dict)
+                indicator2 = engulfing_pattern.run_engulfing_pattern(
+                    tf_df_dict, type="bear"
+                )
+            if type == "bull_engulf":
+                indicator2 = engulfing_pattern.run_engulfing_pattern(
+                    tf_df_dict, type="bull"
+                )
             # all the other analysis need a tf spec
             if type == "from_diff":
                 indicator2 = from_bar_diffs.run_from_bar_diffs(
@@ -95,7 +108,13 @@ def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
             if type == "supertrend":
                 indicator1 = supertrend.run_supertrend(tf_df_dict)
             if type == "bear_engulf":
-                indicator1 = bear_engulf.run_bear_engulf(tf_df_dict)
+                indicator1 = engulfing_pattern.run_engulfing_pattern(
+                    tf_df_dict, type="bear"
+                )
+            if type == "bull_engulf":
+                indicator1 = engulfing_pattern.run_engulfing_pattern(
+                    tf_df_dict, type="bull"
+                )
             # all the other analysis need a tf spec
             if type == "from_diff":
                 indicator1 = from_bar_diffs.run_from_bar_diffs(
@@ -191,7 +210,14 @@ def main():
         "-u",
         "--use-analysis",
         default="supertrend",
-        choices=["supertrend", "from_diff", "price_diff", "tr_atr", "bear_engulf"],
+        choices=[
+            "supertrend",
+            "from_diff",
+            "price_diff",
+            "tr_atr",
+            "bear_engulf",
+            "bull_engulf",
+        ],
         help="Type of analysis",
     )
     PARSER.add_argument(
@@ -219,6 +245,7 @@ def main():
         and len(parsed_arguments.timeframe) > 1
         and parsed_arguments.use_analysis != "supertrend"
         and parsed_arguments.use_analysis != "bear_engulf"
+        and parsed_arguments.use_analysis != "bull_engulf"
     ):
         print(
             f"This analysis supports only 1 timeframe. Will use only {parsed_arguments.timeframe[0]}, the rest are ignored"
@@ -269,17 +296,18 @@ def get_tabulate_func(module_id):
         return prices_diff.tabulate
     elif module_id == inside_bar.OUTPUT_ID:
         return inside_bar.tabulate
-    elif module_id == bear_engulf.OUTPUT_ID:
-        return bear_engulf.tabulate
+    elif module_id == engulfing_pattern.OUTPUT_ID:
+        return engulfing_pattern.tabulate
 
 
 #
 def output(results, args):
     last_rows_count = args.time_series
     sort = args.sort_series
+    analysis = args.use_analysis
 
     if last_rows_count == None:
-        print_tabular(results, sort)
+        print_tabular(results, sort, analysis=analysis)
     elif last_rows_count != None:
         print_series(results, last_rows_count, sort)
 
@@ -290,12 +318,12 @@ def output(results, args):
 # {symbol: {name: ATOMUSDT}, indicator1: { name:'Supertrend', series: {1d: df},  screened: {1d: False, 12h: Buy}}, indicator2:{name:{}, series: {}, screened: {} } },
 # ]
 #
-def print_tabular(results, sort=None):
+def print_tabular(results, sort=None, analysis=None):
     headers = []
     table = []
     titles = []
     descs = []
-    # print(results)
+
     for i, symbol_dict in enumerate(results):
         symbol = symbol_dict["symbol"]["name"]
         headers.append({"symbol": "Symbol"})
@@ -310,8 +338,7 @@ def print_tabular(results, sort=None):
                     descs[i].append(f"----- {value['desc']} -----")
                 tabulate_func = get_tabulate_func(value["output_id"])
                 [header, dict_] = tabulate_func(
-                    symbol_dict[key]["series"],
-                    symbol_dict[key]["screened"],
+                    symbol_dict[key]["series"], symbol_dict[key]["screened"], analysis
                 )
                 headers[i] |= header  # |= Update headers[i] dict, in place
                 table[i] |= dict_

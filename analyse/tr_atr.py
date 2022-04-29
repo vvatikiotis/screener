@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 OUTPUT_ID = "atr_tr"
 
 
-def tabulate(series, tf_screened):
+def tabulate(series, tf_screened, analysis=None):
     l = len(series)
     headers = dict([(x, x) for x in range(l, -1, -1)])
     today = datetime.now()

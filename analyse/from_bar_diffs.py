@@ -5,7 +5,7 @@ from sty import bg, fg, rs, ef
 OUTPUT_ID = "from_bar_diffs"
 
 
-def tabulate(series, tf_screened):
+def tabulate(series, tf_screened, analysis=None):
     l = len(series)
     headers = dict([(x, x) for x in range(l, 0, -1)])
     today = datetime.now()
