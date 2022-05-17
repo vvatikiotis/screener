@@ -23,38 +23,52 @@ def tabulate(tf_series, tf_screened, analysis):
 
 def run_engulfing_pattern(tf_df_dict, type="bear"):
     """
-    Bearish Engulfing candle detection.
+    Engulfing pattern detection.
     No need to specify timeframes, since they are passed in tf_df_dict.
+
+    * Location is key. You want to see these form at reversal points in the market
+    * Bearish engulfing - takes the previous days high, closes through the previous days low
+    * Bullish engulfing - takes the previous days low, closes through the previous days high
     """
 
     def bearish_engulfing(df):
-        current = df.iloc[-1]
         previous = df.iloc[-2]
         b4_previous = df.iloc[-3]
         is_bearish_engulfing = (
-            b4_previous["close"] != b4_previous["open"]
-            and previous["close"] != previous["open"]
-            and b4_previous["close"] > b4_previous["open"]
-            and (
-                b4_previous["close"] <= previous["open"]
-                and b4_previous["open"] >= previous["close"]
+            (  # not doji
+                previous["close"] != previous["open"]
+                and b4_previous["close"] != b4_previous["open"]
             )
+            and (  # b4_previous white, previous black
+                previous["open"] > previous["close"]
+                and b4_previous["open"] < b4_previous["low"]
+            )
+            # sweeps b4_previous high
+            and previous["high"] >= b4_previous["high"] + b4_previous["high"] * 0.005
+            # closes through the b4_previous low
+            and previous["close"] <= b4_previous["low"]
+            and previous["open"] >= b4_previous["close"]
         )
 
         return is_bearish_engulfing
 
     def bullish_engulfing(df):
-        current = df.iloc[-1]
         previous = df.iloc[-2]
         b4_previous = df.iloc[-3]
         is_bullish_engulfing = (
-            b4_previous["close"] != b4_previous["open"]
-            and previous["close"] != previous["open"]
-            and b4_previous["open"] > b4_previous["close"]
-            and (
-                b4_previous["close"] >= previous["open"]
-                and b4_previous["open"] <= previous["close"]
+            (  # not doji
+                previous["close"] != previous["open"]
+                and b4_previous["close"] != b4_previous["open"]
             )
+            and (  # b4_previous black, previous white
+                previous["open"] < previous["close"]
+                and b4_previous["open"] > b4_previous["low"]
+            )
+            # sweeps b4_previous low
+            and previous["low"] <= b4_previous["low"] - b4_previous["low"] * 0.005
+            # closes through the b4_previous high
+            and previous["close"] >= b4_previous["high"]
+            and previous["open"] <= b4_previous["close"]
         )
 
         return is_bullish_engulfing
