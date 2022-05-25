@@ -1,5 +1,6 @@
 import fs, { constants } from "fs";
 import { readFile, writeFile, access } from "fs/promises";
+import fsEextra from "fs-extra";
 import fetch from "node-fetch";
 import { Command } from "commander/esm.mjs";
 import promptly from "promptly";
@@ -116,7 +117,8 @@ function hasDuplicateSymbols(symbols = SYMBOLS) {
 //
 async function checkSymbolsIntegrity(
   symbols = SYMBOLS,
-  resolutions = RESOLUTIONS
+  resolutions = RESOLUTIONS,
+  shouldThrow = false
 ) {
   console.log(
     `checkSymbolsIntegrity() :: Checking integrity for everything...`
@@ -153,6 +155,8 @@ async function checkSymbolsIntegrity(
                 two
               ).toLocaleString()} (${two}) `
             );
+
+            if (shouldThrow) throw "error";
 
             // exit(4);
           }
@@ -703,6 +707,9 @@ function readSymbols() {
 
   return symbols;
 }
+
+//
+//
 //
 function toCSV() {
   const toCSV = spawn("/bin/bash", ["./tools/json-to-csv.sh"]);
@@ -729,6 +736,19 @@ function toCSV() {
 //
 //
 //
+function cpDir(source, dest) {
+  fsEextra.copy(source, dest, function (err) {
+    if (err) {
+      console.log("cpDir() :: An error occured while copying the folder.");
+      return console.error(err);
+    }
+    console.log("Copy completed!");
+  });
+}
+
+//
+//
+//
 function testThings() {
   console.log("testThings() :: This is a dummy test. Write something.");
 }
@@ -749,6 +769,22 @@ async function main() {
 
   const program = new Command();
   program
+
+    //
+    // for fetching and checking datapoint only.
+    //
+    .option("-r, --fetch-symbols", "fetch symbols, in code")
+    .option("-x, --convert-CSV", "convert files to csv")
+    .option(
+      "-b, --rebuild-from-symbols",
+      "rebuild checkpoints file from symbols data"
+    )
+    .option("-c --check-integrity", "check symbols timestamp order")
+    .option("-e --tEst", "test/dry run things")
+
+    //
+    // OBSOLETE, USE PYTHON
+    //
     .option(
       "-s, --run-screener [symbols...]",
       "(DEPRECATED, run python). Run supertrend on fetched symbols"
@@ -767,20 +803,7 @@ async function main() {
       "-p --predicate [predicate]",
       "(DEPRECATED, run python). Select predicate. Options: p1, p2, p3. Read code",
       "p1"
-    )
-
-    //
-    // this script should be used only with following switches,
-    // for fetching and checking datapoint only.
-    //
-    .option("-r, --fetch-symbols", "fetch symbols, in code")
-    .option("-x, --convert-CSV", "convert files to csv")
-    .option(
-      "-b, --rebuild-from-symbols",
-      "rebuild checkpoints file from symbols data"
-    )
-    .option("-c --check-integrity", "check symbols timestamp order")
-    .option("-e --tEst", "test/dry run things");
+    );
 
   program.parse();
 
@@ -789,6 +812,14 @@ async function main() {
   // fetching, checking and rebuilding
   if (options.fetchSymbols) {
     await fetchSymbols(SYMBOLS, RESOLUTIONS);
+
+    try {
+      console.log("\n");
+      await checkSymbolsIntegrity(SYMBOLS, RESOLUTIONS, true);
+    } catch (e) {
+      console.log("\nmain() :: Error with symbol integrity, exiting...");
+      exit(4);
+    }
   }
 
   if (options.rebuildFromSymbols) {
@@ -800,7 +831,24 @@ async function main() {
 
   if (options.checkIntegrity) await checkSymbolsIntegrity(SYMBOLS, RESOLUTIONS);
 
-  // run screener
+  if (options.convertCSV) {
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    console.log("\nmain() :: Will convert json to csv... Wait a bit...");
+    await delay(5000);
+
+    toCSV();
+  }
+
+  if (options.tEst) {
+    testThings();
+
+    // leave it here. this shouldn't be exposed casually to the CLI
+    prependSymbolData(SYMBOLS);
+  }
+
+  //
+  // OBSOLETE NOTE, RUN PYTHON
+  //
   if (options.runScreener) {
     let results;
     const fnST = SuperTrend();
@@ -829,21 +877,6 @@ async function main() {
         filter: options.filter,
       });
     }
-  }
-
-  if (options.convertCSV) {
-    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-    console.log("\nmain() :: Will convert json to csv... Wait a bit...");
-    await delay(5000);
-
-    toCSV();
-  }
-
-  if (options.tEst) {
-    testThings();
-
-    // leave it here. this shouldn't be exposed casually to the CLI
-    prependSymbolData(SYMBOLS);
   }
 }
 
