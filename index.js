@@ -113,6 +113,67 @@ function hasDuplicateSymbols(symbols = SYMBOLS) {
 }
 
 //
+// Integrity functions
+//
+
+//
+// Current implementation: just returns how many candles are missing.
+// The caller has to take this into account
+// method = 'offset' | 'ignore' | 'fill'
+function handleMissingCandles(symbol, resol, candles, method = "offset") {
+  const step = I2SECS[resol.interval] * 1000;
+  let missingCount = 0;
+
+  for (let i = 0; i < candles.length - 1; i++) {
+    if (candles[i][0] + step !== candles[i + 1][0]) {
+      missingCount += (candles[i + 1][0] - candles[i][0]) / step - 1;
+      console.log(`handleMissingCandles() :: missing ${missingCount} candles`);
+    }
+  }
+
+  return missingCount;
+}
+
+//
+//
+//
+function examineJson(symbol, resol, candles, infile = true) {
+  const sourceLog = infile
+    ? `${symbol}_${resol.interval}.json`
+    : `${symbol} ${resol.interval}`;
+  let isOK = true;
+  const diff = I2SECS[resol.interval] * 1000;
+
+  for (let i = 0; i < candles.length - 1; i++) {
+    if (candles[i][0] === candles[i + 1][0]) {
+      console.log(
+        `examineJson() :: ${sourceLog}: Duplicate timestamp ${
+          candles[i + 1][0]
+        }`
+      );
+
+      isOK = false;
+    } else if (candles[i][0] + diff !== candles[i + 1][0]) {
+      const one = candles[i][0];
+      const two = candles[i + 1][0];
+      console.log(
+        `examineJson() :: ${sourceLog}: Incorrect diff: ${new Date(
+          one
+        ).toLocaleString()} (${one}) -- ${new Date(
+          two
+        ).toLocaleString()} (${two}) `
+      );
+
+      isOK = false;
+
+      // exit(4);
+    }
+  }
+
+  return isOK;
+}
+
+//
 //
 //
 async function checkSymbolsIntegrity(
@@ -130,37 +191,23 @@ async function checkSymbolsIntegrity(
         await memo;
         const { interval } = resol;
 
-        let data;
+        let data, candles;
         try {
           data = await readJsonFile(`${symbol}_${interval}.json`);
+          candles = JSON.parse(data);
         } catch (err) {
           console.log(
-            `checkSymbolsIntegrity() :: cannot find ${DATA_PATH}/${symbol}_${interval}.json`,
+            `checkSymbolsIntegrity() :: error reading ${DATA_PATH}/${symbol}_${interval}.json`,
             err
           );
           throw err;
         }
 
-        const candles = JSON.parse(data);
-        const diff = I2SECS[resol.interval] * 1000;
         // console.log(`Checking integrity for ${symbol}_${resol.interval}...`);
-        for (let i = 0; i < candles.length - 1; i++) {
-          if (candles[i][0] + diff !== candles[i + 1][0]) {
-            const one = candles[i][0];
-            const two = candles[i + 1][0];
-            console.log(
-              `${symbol}_${resol.interval}.json: Incorrect diff: ${new Date(
-                one
-              ).toLocaleString()} (${one}) -- ${new Date(
-                two
-              ).toLocaleString()} (${two}) `
-            );
+        const isOK = examineJson(symbol, resol, candles, true);
 
-            if (shouldThrow) throw "error";
-
-            // exit(4);
-          }
-        }
+        if (!isOK) console.log("\n");
+        if (!isOK && shouldThrow) throw "error";
       }, undefined);
     })
   );
@@ -206,6 +253,9 @@ async function rebuildCheckpointsForSymbols(symbols, resolutions) {
 
   return checkpoints;
 }
+//
+// END Integrity functions
+//
 
 //
 // fetch all symbols
@@ -309,13 +359,13 @@ async function prependSymbolData(symbols = SYMBOLS) {
     //
     // 3000 ticks should be enough for any TA we do, even for unstable formulas
     //
-    // { interval: "1w" },
-    // { interval: "3d" },
-    // { interval: "1d" },
-    // { interval: "12h" },
-    // { interval: "6h" },
-    // { interval: "4h" },
-    // { interval: "1h" },
+    { interval: "1w" },
+    { interval: "3d" },
+    { interval: "1d" },
+    { interval: "12h" },
+    { interval: "6h" },
+    { interval: "4h" },
+    { interval: "1h" },
   ];
 
   await Promise.all(
@@ -333,7 +383,7 @@ async function prependSymbolData(symbols = SYMBOLS) {
           json = await readJsonFile(symbolFname);
           firstSavedDate = JSON.parse(json).at(0)[0];
           console.log(
-            ` prependSymbolData() :: ${symbolFname} exists, getting first date from there.`
+            `prependSymbolData() :: ${symbolFname} exists, getting first date from there.`
           );
         } catch (err) {
           console.log(`prependSymbolData() :: exiting hard...`);
@@ -343,18 +393,22 @@ async function prependSymbolData(symbols = SYMBOLS) {
         // fetch from sometime way back in the past to discover the ticker's
         // very first candle timestamp
         const prefetchJson = await fetchData(
-          "prepend",
           symbol,
           interval,
           1,
           "1302928000000" // April 16, 2011 7:26:40 AM GMT+03:00 DST
         );
         const introDate = prefetchJson[0][0];
+        console.log(
+          `prependSymbolData() :: intro date for ${symbol} = ${new Date(
+            introDate
+          ).toLocaleString()}`
+        );
 
         // we have all Binance data, return
         if (firstSavedDate === introDate) {
           console.log(
-            `prependSymbolData() :: we have all data for ${symbol} ${interval}, returning...`
+            `prependSymbolData() :: we have all data for ${symbol} ${interval}, returning...\n`
           );
           return;
         }
@@ -367,7 +421,7 @@ async function prependSymbolData(symbols = SYMBOLS) {
             ? maxLimit
             : (firstSavedDate - introDate) / 1000 / I2SECS[interval];
         console.log(
-          `prependSymbolData() :: ----> Fetching ${symbol}: ${getBack} ${interval},  ...\n`
+          `prependSymbolData() :: ----> Fetching ${symbol}: ${getBack} ${interval},  ...`
         );
 
         const fetchedData = await fetchData(
@@ -377,12 +431,32 @@ async function prependSymbolData(symbols = SYMBOLS) {
           firstSavedDate - I2SECS[interval] * 1000 * getBack
         );
 
-        if (fetchedData.msg)
-          console.log(`prependSymbolData() :: ${fetchedData.msg}`);
+        // decide what to do, depending on the fetchedData integrity and length
+        if (fetchedData.length === 0) {
+          console.log(
+            `prependSymbolData() :: fetched data is empty, ${fetchedData.length}, probably rate limiting hit us, try again\n`
+          );
+        } else if (fetchedData.msg)
+          console.log(`prependSymbolData() :: ${fetchedData.msg}\n`);
         else {
+          const isOK = examineJson(symbol, resol, fetchedData, false);
+
+          if (!isOK) {
+            const count = handleMissingCandles(
+              symbol,
+              resol,
+              fetchedData,
+              false
+            );
+            console.log(
+              `prependSymbolData() :: ${symbol} ${interval}: ${count} missing candles in fetched data. Offsetting and prepending...\n`
+            );
+
+            fetchedData.splice(-count, count);
+          }
+
           const json2update = JSON.parse(json);
           json2update.unshift(...fetchedData);
-
           writeJsonFile(json2update, "w", symbolFname);
         }
       }, undefined);
@@ -810,12 +884,13 @@ async function main() {
   const options = program.opts();
 
   // fetching, checking and rebuilding
+  // will exit if there is an integrity error
   if (options.fetchSymbols) {
     await fetchSymbols(SYMBOLS, RESOLUTIONS);
 
     try {
       console.log("\n");
-      await checkSymbolsIntegrity(SYMBOLS, RESOLUTIONS, true);
+      await checkSymbolsIntegrity(SYMBOLS, RESOLUTIONS);
     } catch (e) {
       console.log("\nmain() :: Error with symbol integrity, exiting...");
       exit(4);
