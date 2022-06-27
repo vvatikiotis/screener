@@ -152,7 +152,10 @@ function examineJson(symbol, resol, candles, infile = true) {
         }`
       );
 
-      isOK = false;
+      // Better exit here. Duplicate timestamps mean that the offsetting fix
+      // has somehow gone wrong.
+      // isOK = false;
+      exit(4);
     } else if (candles[i][0] + diff !== candles[i + 1][0]) {
       const one = candles[i][0];
       const two = candles[i + 1][0];
