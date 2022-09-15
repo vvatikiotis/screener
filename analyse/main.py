@@ -1,3 +1,8 @@
+#
+#  Using this TA lib. Depends on TA-Lib (brew it)
+# https://github.com/twopirllc/pandas-ta
+#
+
 import numpy as np
 import pandas as pd
 import csv
