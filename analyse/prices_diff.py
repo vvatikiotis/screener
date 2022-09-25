@@ -49,6 +49,8 @@ def run_prices_diff(tf_df_dict, timeframe="1d", last_nth=10):
         close = df[timeframe]["close"]
         # close_from = close.iloc[-last_nth]
         percs_from = {}
+
+        # TODO: this should be a rolling function!
         for i in range(1, last_nth):
             percs_from[last_nth - i] = round(
                 perc(close.iloc[-last_nth + i - 1], close.iloc[-last_nth + i]), 2

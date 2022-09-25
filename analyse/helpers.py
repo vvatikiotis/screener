@@ -4,8 +4,14 @@
 
 #
 def group(strings):
+    """
+    {Produces 'SYMBOL': ['tf1', 'tf2', ...], ...} dict
+    """
+
     groups = {}
     for s in map(lambda s: s.split(".")[0], strings):
+        # prefix is symbol
+        # remainder is timeframe
         prefix, remainder = s.split("_")
         groups.setdefault(prefix, []).append(remainder)
     return groups

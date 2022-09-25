@@ -1,0 +1,70 @@
+import pandas as pd
+from datetime import datetime, timedelta
+from sty import bg, fg, rs, ef
+
+OUTPUT_ID = "historical_vol"
+
+
+def tabulate(series, tf_screened, analysis=None):
+    l = len(series)
+    headers = dict([(x, x) for x in range(l, 0, -1)])
+    today = datetime.now()
+    # timeframe = series.columns.values[0].split("_")[1]
+    # if 'h' in timeframe:
+
+    for k, v in headers.items():
+        if k == 1:
+            headers[k] = "Now"
+        else:
+            headers[k] = (today - timedelta(days=k - 1)).strftime("%m/%d")
+
+    for k, v in tf_screened.items():
+        if v <= 0.0125:
+            tf_screened[k] = bg(255, 0, 0) + fg.white + str(v) + rs.all
+        if v <= 0.025 and v > 0.0125:
+            tf_screened[k] = bg(190, 0, 0) + fg.li_grey + str(v) + rs.all
+        if v <= 0.03755 and v > 0.025:
+            tf_screened[k] = fg(255, 0, 0) + str(v) + rs.all
+        if v > 0.0375 and v < 0.05:
+            tf_screened[k] = ef.dim + fg(255, 0, 0) + str(v) + rs.all
+        if v > 0.05 and v < 0.0625:
+            tf_screened[k] = ef.dim + fg(0, 255, 0) + str(v) + rs.all
+        if v >= 0.0625 and v < 0.075:
+            tf_screened[k] = fg(0, 255, 0) + str(v) + rs.all
+        if v >= 0.075 and v < 0.09:
+            tf_screened[k] = bg(0, 200, 0) + fg.black + str(v) + rs.all
+        if v >= 0.09:
+            tf_screened[k] = bg(0, 255, 0) + fg.black + str(v) + rs.all
+
+    return [headers, tf_screened]
+
+
+def run_historical_vol(tf_df_dict, window=20, timeframe="1d", from_bar=10):
+    #
+    def calculate_historical_vol(tf_sources_dict, length, timeframe):
+        """
+        We calculate historical vol based on the following
+        https://www.youtube.com/watch?v=lcPZcFZXDNA
+        """
+        series_dict = {}
+        df = tf_sources_dict[timeframe]
+        df["pct_change"] = df["close"].pct_change()
+        df_pct = df["pct_change"].iloc[1:]
+
+        vol = df_pct.rolling(length).std().dropna()
+
+        for i in range(1, from_bar):
+            series_dict[from_bar - i] = vol.iloc[-from_bar + i]
+
+        return series_dict
+
+    screened = calculate_historical_vol(tf_df_dict, window, timeframe)
+    series = pd.DataFrame({f"hist_vol_{timeframe}": screened})
+
+    return {
+        "name": f"Historical Vol, last {from_bar-1} bars",
+        "desc": f"Historical Vol: showing last {from_bar-1} bars, rolling window: {window} bars. ",
+        "series": series,
+        "screened": screened,
+        "output_id": OUTPUT_ID,
+    }

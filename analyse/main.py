@@ -24,6 +24,7 @@ import prices_diff
 import tr_atr
 import inside_bar
 import engulfing_pattern
+import historical_vol
 
 #
 #
@@ -62,6 +63,7 @@ def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
             or type == "tr_atr"
             or type == "bear_engulf"
             or type == "bull_engulf"
+            or type == "hist_vol"
         ):
             indicator1 = bftb.run_btfd(tf_df_dict)
         # Inside bar has no meaning in timeframes other that 1w and 3d
@@ -83,6 +85,10 @@ def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
         if type == "bull_engulf":
             indicator2 = engulfing_pattern.run_engulfing_pattern(
                 tf_df_dict, type="bull"
+            )
+        if type == "hist_vol":
+            indicator2 = historical_vol.run_historical_vol(
+                tf_df_dict, from_bar=parameter
             )
 
     else:
@@ -108,7 +114,10 @@ def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
                 indicator2 = prices_diff.run_prices_diff(tf_df_dict, last_nth=parameter)
             if type == "tr_atr":
                 indicator2 = tr_atr.run_tr_atr(tf_df_dict, from_bar=parameter)
-
+            if type == "hist_vol":
+                indicator2 = historical_vol.run_historical_vol(
+                    tf_df_dict, from_bar=parameter
+                )
         else:
             if type == "supertrend":
                 indicator1 = supertrend.run_supertrend(tf_df_dict)
@@ -184,8 +193,8 @@ def pool_initializer(analysis, timeframe, parameter):
 def main():
     set_options()
 
-    dir = "../symbols/csv"
-    filenames = [f for f in os.listdir(dir) if f.endswith(".csv")]
+    CSV_DIR = "../symbols/csv"
+    filenames = [f for f in os.listdir(CSV_DIR) if f.endswith(".csv")]
     filenames.sort()  # sort works in-place
     symbol_tfs_dict = helpers.group(filenames)
     for k, v in symbol_tfs_dict.items():
@@ -222,13 +231,14 @@ def main():
             "tr_atr",
             "bear_engulf",
             "bull_engulf",
+            "hist_vol",
         ],
         help="Type of analysis",
     )
     PARSER.add_argument(
         "-p",
         "--parameter",
-        help="Specify lookback window size (integer) for from_diff, price_diff and tr_atr analysis",
+        help="Specify lookback window size (integer) for from_diff, price_diff, tr_atr and hist_vol analysis",
     )
 
     parsed_arguments = PARSER.parse_args(sys.argv[1:])
@@ -262,9 +272,10 @@ def main():
             parsed_arguments.use_analysis != "from_diff"
             and parsed_arguments.use_analysis != "price_diff"
             and parsed_arguments.use_analysis != "tr_atr"
+            and parsed_arguments.use_analysis != "hist_vol"
         ):
             print(
-                f"Only from_diff, price_diff, tr_atr support -p. Will run {parsed_arguments.use_analysis} with default arguments"
+                f"Only from_diff, price_diff, tr_atr, hist_vol support -p. Will run {parsed_arguments.use_analysis} with default arguments"
             )
         else:
             parameter = int(parsed_arguments.parameter)
@@ -303,6 +314,8 @@ def get_tabulate_func(module_id):
         return inside_bar.tabulate
     elif module_id == engulfing_pattern.OUTPUT_ID:
         return engulfing_pattern.tabulate
+    elif module_id == historical_vol.OUTPUT_ID:
+        return historical_vol.tabulate
 
 
 #
