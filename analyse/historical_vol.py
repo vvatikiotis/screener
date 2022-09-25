@@ -1,6 +1,7 @@
 import pandas as pd
 from datetime import datetime, timedelta
 from sty import bg, fg, rs, ef
+import math
 
 OUTPUT_ID = "historical_vol"
 
@@ -46,6 +47,7 @@ def run_historical_vol(tf_df_dict, window=20, timeframe="1d", from_bar=10):
         We calculate historical vol based on the following
         https://www.youtube.com/watch?v=lcPZcFZXDNA
         """
+
         series_dict = {}
         df = tf_sources_dict[timeframe]
         df["pct_change"] = df["close"].pct_change()
@@ -53,8 +55,10 @@ def run_historical_vol(tf_df_dict, window=20, timeframe="1d", from_bar=10):
 
         vol = df_pct.rolling(length).std().dropna()
 
+        annual = 365
+        annualised = math.sqrt(annual)
         for i in range(1, from_bar):
-            series_dict[from_bar - i] = vol.iloc[-from_bar + i]
+            series_dict[from_bar - i] = vol.iloc[-from_bar + i] * annualised * 100
 
         return series_dict
 
