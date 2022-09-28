@@ -37,6 +37,8 @@ def tabulate(series, tf_screened, analysis=None):
 
 
 def run_from_bar_diffs(tf_df_dict, timeframe="1d", from_bar=10):
+
+    # percentage diff
     def perc(from_, to_):
         return ((to_ - from_) / from_) * 100
 

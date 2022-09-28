@@ -19,30 +19,31 @@ def tabulate(series, tf_screened, analysis=None):
         else:
             headers[k] = (today - timedelta(days=k - 1)).strftime("%m/%d")
 
-    for k, v in tf_screened.items():
-        if v <= 0.0125:
-            tf_screened[k] = bg(255, 0, 0) + fg.white + str(v) + rs.all
-        if v <= 0.025 and v > 0.0125:
-            tf_screened[k] = bg(190, 0, 0) + fg.li_grey + str(v) + rs.all
-        if v <= 0.03755 and v > 0.025:
-            tf_screened[k] = fg(255, 0, 0) + str(v) + rs.all
-        if v > 0.0375 and v < 0.05:
-            tf_screened[k] = ef.dim + fg(255, 0, 0) + str(v) + rs.all
-        if v > 0.05 and v < 0.0625:
-            tf_screened[k] = ef.dim + fg(0, 255, 0) + str(v) + rs.all
-        if v >= 0.0625 and v < 0.075:
-            tf_screened[k] = fg(0, 255, 0) + str(v) + rs.all
-        if v >= 0.075 and v < 0.09:
-            tf_screened[k] = bg(0, 200, 0) + fg.black + str(v) + rs.all
-        if v >= 0.09:
-            tf_screened[k] = bg(0, 255, 0) + fg.black + str(v) + rs.all
+    # NOTE: maybe we need this
+    # for k, v in tf_screened.items():
+    #     if v <= 0.0125:
+    #         tf_screened[k] = bg(255, 0, 0) + fg.white + str(v) + rs.all
+    #     if v <= 0.025 and v > 0.0125:
+    #         tf_screened[k] = bg(190, 0, 0) + fg.li_grey + str(v) + rs.all
+    #     if v <= 0.03755 and v > 0.025:
+    #         tf_screened[k] = fg(255, 0, 0) + str(v) + rs.all
+    #     if v > 0.0375 and v < 0.05:
+    #         tf_screened[k] = ef.dim + fg(255, 0, 0) + str(v) + rs.all
+    #     if v > 0.05 and v < 0.0625:
+    #         tf_screened[k] = ef.dim + fg(0, 255, 0) + str(v) + rs.all
+    #     if v >= 0.0625 and v < 0.075:
+    #         tf_screened[k] = fg(0, 255, 0) + str(v) + rs.all
+    #     if v >= 0.075 and v < 0.09:
+    #         tf_screened[k] = bg(0, 200, 0) + fg.black + str(v) + rs.all
+    #     if v >= 0.09:
+    #         tf_screened[k] = bg(0, 255, 0) + fg.black + str(v) + rs.all
 
     return [headers, tf_screened]
 
 
-def run_historical_vol(tf_df_dict, window=20, timeframe="1d", from_bar=10):
+def run_historical_vol(tf_df_dict, rollback=20, timeframe="1d", from_bar=10):
     #
-    def calculate_historical_vol(tf_sources_dict, length, timeframe):
+    def calculate_historical_vol(tf_sources_dict):
         """
         We calculate historical vol based on the following
         https://www.youtube.com/watch?v=lcPZcFZXDNA
@@ -53,21 +54,32 @@ def run_historical_vol(tf_df_dict, window=20, timeframe="1d", from_bar=10):
         df["pct_change"] = df["close"].pct_change()
         df_pct = df["pct_change"].iloc[1:]
 
-        vol = df_pct.rolling(length).std().dropna()
+        vol = df_pct.rolling(rollback).std().dropna()
 
-        annual = 365
-        annualised = math.sqrt(annual)
+        annual = 365  # for crypto only
+        per = (
+            1
+            if (
+                timeframe == "1d"
+                or timeframe == "12h"
+                or timeframe == "6h"
+                or timeframe == "4h"
+                or timeframe == "1h"
+            )
+            else 7
+        )
+        annualised = math.sqrt(annual / per)
         for i in range(1, from_bar):
             series_dict[from_bar - i] = vol.iloc[-from_bar + i] * annualised * 100
 
         return series_dict
 
-    screened = calculate_historical_vol(tf_df_dict, window, timeframe)
+    screened = calculate_historical_vol(tf_df_dict)
     series = pd.DataFrame({f"hist_vol_{timeframe}": screened})
 
     return {
         "name": f"Historical Vol, last {from_bar-1} bars",
-        "desc": f"Historical Vol: showing last {from_bar-1} bars, rolling window: {window} bars. ",
+        "desc": f"Historical Vol: showing last {from_bar-1} bars, rolling window: {rollback} bars. ",
         "series": series,
         "screened": screened,
         "output_id": OUTPUT_ID,
