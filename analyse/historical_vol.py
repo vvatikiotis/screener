@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from datetime import datetime, timedelta
 from sty import bg, fg, rs, ef
 import math
@@ -43,7 +44,7 @@ def tabulate(series, tf_screened, analysis=None):
     return [headers, tf_screened]
 
 
-def run_historical_vol(tf_df_dict, rollback=20, timeframe="1d", from_bar=10):
+def run_historical_vol(tf_df_dict, rollback=21, timeframe="1d", from_bar=10):
     #
     def calculate_historical_vol(tf_sources_dict):
         """
@@ -53,10 +54,12 @@ def run_historical_vol(tf_df_dict, rollback=20, timeframe="1d", from_bar=10):
 
         series_dict = {}
         df = tf_sources_dict[timeframe]
-        df["pct_change"] = df["close"].pct_change()
-        df_pct = df["pct_change"].iloc[1:]
+        df["pct_change"] = np.log1p(df.close.pct_change())
+        df_log_pct = df["pct_change"].iloc[1:]
 
-        vol = df_pct.rolling(rollback).std().dropna()
+        vol = df_log_pct.rolling(rollback).std().dropna()
+
+        # calculate the mean of only last year
         mean = df["close"].iloc[-rollback:].mean()
 
         annual = 365  # for crypto only
@@ -74,12 +77,14 @@ def run_historical_vol(tf_df_dict, rollback=20, timeframe="1d", from_bar=10):
         annualised = math.sqrt(annual / per)
         for i in range(1, from_bar):
             # formula from TV vanilla HV indicator
-            normalised_vol = vol.iloc[-from_bar + i] * annualised * 100
-            series_dict[from_bar + 1 - i] = normalised_vol
+            hist_vol = 100 * vol.iloc[-from_bar + i] * annualised
+
+            # +1 because we want to store CV in the last column
+            series_dict[from_bar + 1 - i] = hist_vol
 
         # This is Coefficiency of Variation
         # https://seekingalpha.com/article/4079870-coefficient-of-variation-better-metric-to-compare-volatility
-        series_dict[1] = vol.iloc[-1] * 100 / mean
+        series_dict[1] = 100 * vol.iloc[-1] / mean
 
         return series_dict
 
