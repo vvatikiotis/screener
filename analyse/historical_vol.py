@@ -15,6 +15,8 @@ def tabulate(series, tf_screened, analysis=None):
 
     for k, v in headers.items():
         if k == 1:
+            headers[k] = "CoV Now"
+        elif k == 2:
             headers[k] = "Now"
         else:
             headers[k] = (today - timedelta(days=k - 1)).strftime("%m/%d")
@@ -55,6 +57,7 @@ def run_historical_vol(tf_df_dict, rollback=20, timeframe="1d", from_bar=10):
         df_pct = df["pct_change"].iloc[1:]
 
         vol = df_pct.rolling(rollback).std().dropna()
+        mean = df["close"].iloc[-rollback:].mean()
 
         annual = 365  # for crypto only
         per = (
@@ -70,7 +73,12 @@ def run_historical_vol(tf_df_dict, rollback=20, timeframe="1d", from_bar=10):
         )
         annualised = math.sqrt(annual / per)
         for i in range(1, from_bar):
-            series_dict[from_bar - i] = vol.iloc[-from_bar + i] * annualised * 100
+            # formula from TV vanilla HV indicator
+            series_dict[from_bar + 1 - i] = vol.iloc[-from_bar + i] * annualised * 100
+
+        # This is Coefficiency of Variation
+        # https://seekingalpha.com/article/4079870-coefficient-of-variation-better-metric-to-compare-volatility
+        series_dict[1] = series_dict[2] / mean
 
         return series_dict
 
