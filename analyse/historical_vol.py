@@ -15,7 +15,7 @@ def tabulate(series, tf_screened, analysis=None):
 
     for k, v in headers.items():
         if k == 1:
-            headers[k] = "CoV Now"
+            headers[k] = "CV Now"
         elif k == 2:
             headers[k] = "Now"
         else:
@@ -74,11 +74,12 @@ def run_historical_vol(tf_df_dict, rollback=20, timeframe="1d", from_bar=10):
         annualised = math.sqrt(annual / per)
         for i in range(1, from_bar):
             # formula from TV vanilla HV indicator
-            series_dict[from_bar + 1 - i] = vol.iloc[-from_bar + i] * annualised * 100
+            normalised_vol = vol.iloc[-from_bar + i] * annualised * 100
+            series_dict[from_bar + 1 - i] = normalised_vol
 
         # This is Coefficiency of Variation
         # https://seekingalpha.com/article/4079870-coefficient-of-variation-better-metric-to-compare-volatility
-        series_dict[1] = series_dict[2] / mean
+        series_dict[1] = vol.iloc[-1] * 100 / mean
 
         return series_dict
 
