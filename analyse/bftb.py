@@ -4,7 +4,7 @@ import pandas as pd
 OUTPUT_ID = "bftb"
 
 
-def tabulate(series, tf_screened, analysis=None):
+def tabulate(series, tf_screened, analysis=None, timefram=None):
     headers = {"BftB": "BftB (low - high)"}
 
     high = "{:.2f}".format(series["BtfB_High"].iloc[-1])

@@ -5,18 +5,35 @@ from sty import bg, fg, rs, ef
 OUTPUT_ID = "prices_diff"
 
 
-def tabulate(series, tf_screened, analysis=None):
+def tabulate(series, tf_screened, analysis=None, timeframe=None):
+    if timeframe is None:
+        timeframe = "1d"
+    else:
+        timeframe = timeframe[0]
+
+    def datetime_diff(k):
+        today = datetime.now()
+        if timeframe == "1d":
+            return (today - timedelta(days=k - 1)).strftime("%m/%d")
+
+        elif (
+            timeframe == "12h"
+            or timeframe == "6h"
+            or timeframe == "4h"
+            or timeframe == "1h"
+        ):
+            return (today - timedelta(hours=k * int(timeframe[:-1]))).strftime(
+                "%m/%d %H:%M"
+            )
+
     l = len(series)
     headers = dict([(x, x) for x in range(l, 0, -1)])
-    today = datetime.now()
-    timeframe = series.columns.values[0].split("_")[1]
-    # if 'h' in timeframe:
 
     for k, v in headers.items():
         if k == 1:
             headers[k] = "Now"
         else:
-            headers[k] = (today - timedelta(days=k - 1)).strftime("%m/%d")
+            headers[k] = datetime_diff(k)
 
     for k, v in tf_screened.items():
         if v <= -30:

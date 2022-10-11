@@ -139,7 +139,13 @@ def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
                     tf_df_dict, tf, last_nth=parameter
                 )
             if type == "tr_atr":
-                indicator1 = tr_atr.run_tr_atr(tf_df_dict, tf, from_bar=parameter)
+                indicator1 = tr_atr.run_tr_atr(
+                    tf_df_dict, timeframe=tf, from_bar=parameter
+                )
+            if type == "hist_vol":
+                indicator1 = historical_vol.run_historical_vol(
+                    tf_df_dict, timeframe=tf, from_bar=parameter
+                )
 
     indicator_results = {"indicator1": indicator1}
     if indicator2 != None:
@@ -207,7 +213,10 @@ def main():
         "-s", "--symbol", nargs="+", help="Run for symbol or list of symbols"
     )
     PARSER.add_argument(
-        "-t", "--timeframe", nargs="+", help="Run for timeframe or list of timeframes"
+        "-t",
+        "--timeframe",
+        nargs="+",
+        help="Run for timeframe or list of timeframes",
     )
     PARSER.add_argument(
         "-ts",
@@ -261,6 +270,7 @@ def main():
         and parsed_arguments.use_analysis != "supertrend"
         and parsed_arguments.use_analysis != "bear_engulf"
         and parsed_arguments.use_analysis != "bull_engulf"
+        and parsed_arguments.use_timeframe != "hist_vol"
     ):
         print(
             f"This analysis supports only 1 timeframe. Will use only {parsed_arguments.timeframe[0]}, the rest are ignored"
@@ -323,9 +333,10 @@ def output(results, args):
     last_rows_count = args.time_series
     sort = args.sort_series
     analysis = args.use_analysis
+    timeframe = args.timeframe
 
     if last_rows_count == None:
-        print_tabular(results, sort, analysis=analysis)
+        print_tabular(results, sort, analysis=analysis, timeframe=timeframe)
     elif last_rows_count != None:
         print_series(results, last_rows_count, sort)
 
@@ -336,7 +347,11 @@ def output(results, args):
 # {symbol: {name: ATOMUSDT}, indicator1: { name:'Supertrend', series: {1d: df},  screened: {1d: False, 12h: Buy}}, indicator2:{name:{}, series: {}, screened: {} } },
 # ]
 #
-def print_tabular(results, sort=None, analysis=None):
+def print_tabular(results, sort=None, analysis=None, timeframe=None):
+    """
+    Print results in a tabular format
+    """
+
     headers = []
     table = []
     titles = []
@@ -356,7 +371,10 @@ def print_tabular(results, sort=None, analysis=None):
                     descs[i].append(f"----- {value['desc']} -----")
                 tabulate_func = get_tabulate_func(value["output_id"])
                 [header, dict_] = tabulate_func(
-                    symbol_dict[key]["series"], symbol_dict[key]["screened"], analysis
+                    symbol_dict[key]["series"],
+                    symbol_dict[key]["screened"],
+                    analysis,
+                    timeframe,
                 )
                 headers[i] |= header  # |= Update headers[i] dict, in place
                 table[i] |= dict_
@@ -376,6 +394,10 @@ def print_tabular(results, sort=None, analysis=None):
 # ]
 #
 def print_series(results, last, sort=None):
+    """
+    Print raw result series
+    """
+
     today = datetime.now()
     print(f"--------- {colored(today, 'yellow')} ---------\n")
 

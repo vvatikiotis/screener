@@ -39,7 +39,7 @@ def color(t):
 
 
 # this depends on the data structures shape we used to store our source data and results
-def tabulate(tf_series_dict, tf_screened_dict, analysis=None):
+def tabulate(tf_series_dict, tf_screened_dict, analysis=None, timefram=None):
     headers = dict([(x, x) for x in list(tf_screened_dict.keys())])
 
     arrow3d = ""

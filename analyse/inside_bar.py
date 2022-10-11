@@ -3,7 +3,7 @@ import pandas as pd
 OUTPUT_ID = "inside_bar"
 
 
-def tabulate(series, tf_screened, analysis=None):
+def tabulate(series, tf_screened, analysis=None, timeframe=None):
     headers = {"inside": "Inside Bar"}
 
     text = ""

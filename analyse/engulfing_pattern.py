@@ -5,7 +5,7 @@ from sty import fg, rs
 OUTPUT_ID = "engulfing_pattern"
 
 
-def tabulate(tf_series, tf_screened, analysis):
+def tabulate(tf_series, tf_screened, analysis, timefram=None):
     string = "Bearish" if analysis == "bear_engulf" else "Bullish"
     first_str = "bear" if analysis == "bear_engulf" else "bull"
     color = fg(255, 0, 0) if analysis == "bear_engulf" else fg(0, 255, 0)
