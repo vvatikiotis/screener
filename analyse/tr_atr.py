@@ -1,12 +1,14 @@
 from datetime import datetime, timedelta
 from sty import bg, fg, rs, ef
+from pydash import omit
 import pandas_ta as ta
 import pandas as pd
+
 
 OUTPUT_ID = "atr_tr"
 
 
-def tabulate(series, tf_screened, analysis=None, timeframe=None):
+def tabulate(series, dict_screened, analysis=None, timeframe=None):
     if timeframe is None:
         timeframe = "1d"
     else:
@@ -27,6 +29,38 @@ def tabulate(series, tf_screened, analysis=None, timeframe=None):
                 "%m/%d %H:%M"
             )
 
+    #
+    def colorize_min_max(element, min_or_max):
+        if min_or_max == "max":
+            color = bg(0, 255, 0)
+        else:
+            color = bg(255, 0, 0)
+
+        return (
+            str("    " + element[0] + "\n" + element[1] + " / ")
+            + color
+            + fg.black
+            + str(element[2])
+            + rs.all
+        )
+
+    #
+    def colorize_one(element, max_natr, min_natr):
+        if float(element[2]) > max_natr:
+            color = fg(0, 255, 0)
+        elif float(element[2]) < min_natr:
+            color = fg(255, 0, 0)
+        else:
+            color = ""
+
+        return (
+            str("    " + element[0] + "\n" + element[1] + " / ")
+            + color
+            + str(element[2])
+            + rs.all
+        )
+
+    # create header text
     l = len(series)
     headers = dict([(x, x) for x in range(l, -1, -1)])
     for k, v in headers.items():
@@ -35,33 +69,36 @@ def tabulate(series, tf_screened, analysis=None, timeframe=None):
         else:
             headers[k] = datetime_diff(k)
 
-    idx_of_max = max(tf_screened, key=(lambda k: float(tf_screened[k].split(" ")[2])))
-    idx_of_min = min(tf_screened, key=(lambda k: float(tf_screened[k].split(" ")[2])))
+    # colorize
+    idx_of_max = max(
+        omit(dict_screened, 1), key=(lambda k: float(dict_screened[k].split(" ")[2]))
+    )
+    idx_of_min = min(
+        omit(dict_screened, 1), key=(lambda k: float(dict_screened[k].split(" ")[2]))
+    )
 
-    for k, v in tf_screened.items():
+    # colorize all except the current candle.
+    # current candle gets special color if > max or < min
+    dict_result = {}
+    for k, v in dict_screened.items():
+        # print(k, idx_of_max, idx_of_min)
         element = v.split(" ")
-        if k == idx_of_max:
-            tf_screened[k] = (
-                str("    " + element[0] + "\n" + element[1] + " / ")
-                + bg(0, 255, 0)
-                + fg.black
-                + str(element[2])
-                + rs.all
+        if k == 1:
+            dict_result[1] = colorize_one(
+                element,
+                float(dict_screened[idx_of_max].split(" ")[2]),
+                float(dict_screened[idx_of_min].split(" ")[2]),
             )
+        elif k == idx_of_max:
+            dict_result[k] = colorize_min_max(element, "max")
         elif k == idx_of_min:
-            tf_screened[k] = (
-                str("    " + element[0] + "\n" + element[1] + " / ")
-                + bg(255, 0, 0)
-                + fg.black
-                + str(element[2])
-                + rs.all
-            )
+            dict_result[k] = colorize_min_max(element, "min")
         else:
-            tf_screened[k] = str(
+            dict_result[k] = str(
                 "    " + element[0] + "\n" + element[1] + " / " + element[2]
             )
 
-    return [headers, tf_screened]
+    return [headers, dict_result]
 
 
 def run_tr_atr(tf_df_dict, timeframe="1d", from_bar=10, lookback=14):

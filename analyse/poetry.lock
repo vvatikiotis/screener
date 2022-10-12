@@ -268,6 +268,17 @@ docs = ["furo (>=2021.7.5b38)", "proselint (>=0.10.2)", "sphinx (>=4)", "sphinx-
 test = ["appdirs (==1.4.4)", "pytest (>=6)", "pytest-cov (>=2.7)", "pytest-mock (>=3.6)"]
 
 [[package]]
+name = "pydash"
+version = "5.1.1"
+description = "The kitchen sink of Python utility libraries for doing \"stuff\" in a functional way. Based on the Lo-Dash Javascript library."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.extras]
+dev = ["Sphinx", "black", "build", "coverage", "docformatter", "flake8", "flake8-black", "flake8-bugbear", "flake8-isort", "invoke", "isort", "pylint", "pytest", "pytest-cov", "sphinx-rtd-theme", "tox", "twine", "wheel"]
+
+[[package]]
 name = "pylint"
 version = "2.15.2"
 description = "python code static checker"
@@ -422,7 +433,7 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "aad70999b4e3e33632832247aa3be6e150796134fffa6079c9af7e7aa0c4963f"
+content-hash = "74610c39d37efd2e931ffb202de4e2eac4a31444db81f5639b222233c8e41b7d"
 
 [metadata.files]
 astroid = [
@@ -823,6 +834,10 @@ Pillow = [
 platformdirs = [
     {file = "platformdirs-2.5.2-py3-none-any.whl", hash = "sha256:027d8e83a2d7de06bbac4e5ef7e023c02b863d7ea5d079477e722bb41ab25788"},
     {file = "platformdirs-2.5.2.tar.gz", hash = "sha256:58c8abb07dcb441e6ee4b11d8df0ac856038f944ab98b7be6b27b2a3c7feef19"},
+]
+pydash = [
+    {file = "pydash-5.1.1-py3-none-any.whl", hash = "sha256:1f677bc1b3e3d734fedfeec6ef379b3abca4466dd83ede2bcc2a783c40dc8325"},
+    {file = "pydash-5.1.1.tar.gz", hash = "sha256:6147c295bdba57004e38e57d8522e0b55c30a468ae7770d598de6ccbb064798a"},
 ]
 pylint = [
     {file = "pylint-2.15.2-py3-none-any.whl", hash = "sha256:cc3da458ba810c49d330e09013dec7ced5217772dec8f043ccdd34dae648fde8"},
