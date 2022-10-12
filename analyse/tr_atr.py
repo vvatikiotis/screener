@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from sty import bg, fg, rs, ef
 import pandas_ta as ta
 import pandas as pd
 
@@ -34,6 +35,32 @@ def tabulate(series, tf_screened, analysis=None, timeframe=None):
         else:
             headers[k] = datetime_diff(k)
 
+    idx_of_max = max(tf_screened, key=(lambda k: float(tf_screened[k].split(" ")[2])))
+    idx_of_min = min(tf_screened, key=(lambda k: float(tf_screened[k].split(" ")[2])))
+
+    for k, v in tf_screened.items():
+        element = v.split(" ")
+        if k == idx_of_max:
+            tf_screened[k] = (
+                str("    " + element[0] + "\n" + element[1] + " / ")
+                + bg(0, 255, 0)
+                + fg.black
+                + str(element[2])
+                + rs.all
+            )
+        elif k == idx_of_min:
+            tf_screened[k] = (
+                str("    " + element[0] + "\n" + element[1] + " / ")
+                + bg(255, 0, 0)
+                + fg.black
+                + str(element[2])
+                + rs.all
+            )
+        else:
+            tf_screened[k] = str(
+                "    " + element[0] + "\n" + element[1] + " / " + element[2]
+            )
+
     return [headers, tf_screened]
 
 
@@ -58,7 +85,8 @@ def run_tr_atr(tf_df_dict, timeframe="1d", from_bar=10, lookback=14):
             _tr = round(tr.iloc[-from_bar + i], 3)
             _atr = round(atr.iloc[-from_bar + i], 3)
             _natr = round(natr.iloc[-from_bar + i], 3)
-            results[from_bar - i] = f"{_tr}\n{_atr} / {_natr}"
+            # results[from_bar - i] = f"{_tr}\n{_atr} / {_natr}"
+            results[from_bar - i] = f"{_tr} {_atr} {_natr}"
 
         return results
 
