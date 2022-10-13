@@ -37,7 +37,7 @@ def tabulate(series, dict_screened, analysis=None, timeframe=None):
             color = bg(255, 0, 0)
 
         return (
-            str("    " + element[0] + "\n" + element[1] + " / ")
+            str(element[0] + "\n" + element[1] + " / ")
             + color
             + fg.black
             + str(element[2])
@@ -54,7 +54,7 @@ def tabulate(series, dict_screened, analysis=None, timeframe=None):
             color = ""
 
         return (
-            str("    " + element[0] + "\n" + element[1] + " / ")
+            str(element[0] + "\n" + element[1] + " / ")
             + color
             + str(element[2])
             + rs.all
@@ -94,9 +94,7 @@ def tabulate(series, dict_screened, analysis=None, timeframe=None):
         elif k == idx_of_min:
             dict_result[k] = colorize_min_max(element, "min")
         else:
-            dict_result[k] = str(
-                "    " + element[0] + "\n" + element[1] + " / " + element[2]
-            )
+            dict_result[k] = str(element[0] + "\n" + element[1] + " / " + element[2])
 
     return [headers, dict_result]
 

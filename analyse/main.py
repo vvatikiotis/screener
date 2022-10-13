@@ -270,10 +270,9 @@ def main():
         and parsed_arguments.use_analysis != "supertrend"
         and parsed_arguments.use_analysis != "bear_engulf"
         and parsed_arguments.use_analysis != "bull_engulf"
-        and parsed_arguments.use_timeframe != "hist_vol"
     ):
         print(
-            f"This analysis supports only 1 timeframe. Will use only {parsed_arguments.timeframe[0]}, the rest are ignored"
+            f"This analysis supports only 1 timeframe per run. Will use only {parsed_arguments.timeframe[0]}, the rest are ignored"
         )
 
     parameter = 10
@@ -382,7 +381,7 @@ def print_tabular(results, sort=None, analysis=None, timeframe=None):
     today = datetime.now()
     print(f"--------- {colored(today, 'yellow')} ---------\n")
     print(*titles[0])
-    print(tabulate(table, headers=headers[0], tablefmt="fancy_grid"))
+    print(tabulate(table, headers=headers[0], tablefmt="fancy_grid", stralign="right"))
     print("\n")
     print(*[f"{x}\n" for x in descs[0]])
 

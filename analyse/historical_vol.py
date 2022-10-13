@@ -110,7 +110,7 @@ def run_historical_vol(tf_df_dict, rollback=21, timeframe="1d", from_bar=10):
 
     return {
         "name": f"Historical Vol, last {from_bar-1} bars",
-        "desc": f"Historical Vol: showing last {from_bar-1} bars, rolling window: {rollback} bars. ",
+        "desc": f"Historical Vol: showing last {from_bar-1} bars, rolling window: {rollback} bars. CV = Coefficient of Variation",
         "series": series,
         "screened": screened,
         "output_id": OUTPUT_ID,
