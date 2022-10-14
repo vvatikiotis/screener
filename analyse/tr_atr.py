@@ -70,10 +70,10 @@ def tabulate(series, dict_screened, analysis=None, timeframe=None):
             headers[k] = datetime_diff(k)
 
     # colorize
-    idx_of_max = max(
+    key_of_max = max(
         omit(dict_screened, 1), key=(lambda k: float(dict_screened[k].split(" ")[2]))
     )
-    idx_of_min = min(
+    key_of_min = min(
         omit(dict_screened, 1), key=(lambda k: float(dict_screened[k].split(" ")[2]))
     )
 
@@ -86,12 +86,12 @@ def tabulate(series, dict_screened, analysis=None, timeframe=None):
         if k == 1:
             dict_result[1] = colorize_one(
                 element,
-                float(dict_screened[idx_of_max].split(" ")[2]),
-                float(dict_screened[idx_of_min].split(" ")[2]),
+                float(dict_screened[key_of_max].split(" ")[2]),
+                float(dict_screened[key_of_min].split(" ")[2]),
             )
-        elif k == idx_of_max:
+        elif k == key_of_max:
             dict_result[k] = colorize_min_max(element, "max")
-        elif k == idx_of_min:
+        elif k == key_of_min:
             dict_result[k] = colorize_min_max(element, "min")
         else:
             dict_result[k] = str(element[0] + "\n" + element[1] + " / " + element[2])
@@ -99,6 +99,7 @@ def tabulate(series, dict_screened, analysis=None, timeframe=None):
     return [headers, dict_result]
 
 
+#
 def run_tr_atr(tf_df_dict, timeframe="1d", from_bar=10, lookback=14):
     """
     Calculates tr, atr and natr for given timeframe, printing from_bar number of

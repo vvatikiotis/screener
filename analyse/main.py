@@ -378,12 +378,13 @@ def print_tabular(results, sort=None, analysis=None, timeframe=None):
                 headers[i] |= header  # |= Update headers[i] dict, in place
                 table[i] |= dict_
 
-    today = datetime.now()
-    print(f"--------- {colored(today, 'yellow')} ---------\n")
     print(*titles[0])
     print(tabulate(table, headers=headers[0], tablefmt="fancy_grid", stralign="right"))
     print("\n")
     print(*[f"{x}\n" for x in descs[0]])
+
+    today = datetime.now()
+    print(f"--------- {colored(today, 'yellow')} ---------\n")
 
 
 #
@@ -397,9 +398,6 @@ def print_series(results, last, sort=None):
     Print raw result series
     """
 
-    today = datetime.now()
-    print(f"--------- {colored(today, 'yellow')} ---------\n")
-
     for i, symbol_dict in enumerate(results):  # iterate per symbol
         symbol = symbol_dict["symbol"]["name"]
         print(f"\n\n----------------- ", colored(symbol, "green"), " -----------------")
@@ -412,6 +410,9 @@ def print_series(results, last, sort=None):
                 for tf, series in indicator_series.items():
                     print(f"Timeframe: {tf}")
                     print(series.tail(int(last)))
+
+    today = datetime.now()
+    print(f"--------- {colored(today, 'yellow')} ---------\n")
 
 
 def set_options():
