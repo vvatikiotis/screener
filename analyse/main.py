@@ -51,100 +51,114 @@ def prepare_dataframe(data):
 #
 # tf_df_dict: {'1d': df1, '12h': df2,...}
 #
-def run_indicators(tf_df_dict, type, timeframe=None, parameter=None):
+def run_indicators(
+    tf_df_dict, analysis=None, timeframe=None, view_params=None, analysis_params=None
+):
     indicator_results = {}
     indicator2 = None
 
     if timeframe == None:
         if (
-            type == "supertrend"
-            or type == "from_diff"
-            or type == "price_diff"
-            or type == "tr_atr"
-            or type == "bear_engulf"
-            or type == "bull_engulf"
-            or type == "hist_vol"
+            analysis == "supertrend"
+            or analysis == "from_diff"
+            or analysis == "tr_atr"
+            or analysis == "bear_engulf"
+            or analysis == "price_diff"
+            or analysis == "bull_engulf"
+            or analysis == "hist_vol"
         ):
             indicator1 = bftb.run_btfd(tf_df_dict)
         # Inside bar has no meaning in timeframes other that 1w and 3d
-        if type == "supertrend":
+        if analysis == "supertrend":
             indicator2 = supertrend.run_supertrend(tf_df_dict)
         # all the other analysis need a tf spec
-        if type == "from_diff":
+        if analysis == "from_diff":
             indicator2 = from_bar_diffs.run_from_bar_diffs(
-                tf_df_dict, from_bar=parameter
+                tf_df_dict, from_bar=view_params
             )
-        if type == "price_diff":
-            indicator2 = prices_diff.run_prices_diff(tf_df_dict, last_nth=parameter)
-        if type == "tr_atr":
-            indicator2 = tr_atr.run_tr_atr(tf_df_dict, from_bar=parameter)
-        if type == "bear_engulf":
+        if analysis == "price_diff":
+            indicator2 = prices_diff.run_prices_diff(tf_df_dict, last_nth=view_params)
+        if analysis == "bear_engulf":
             indicator2 = engulfing_pattern.run_engulfing_pattern(
                 tf_df_dict, type="bear"
             )
-        if type == "bull_engulf":
+        if analysis == "bull_engulf":
             indicator2 = engulfing_pattern.run_engulfing_pattern(
                 tf_df_dict, type="bull"
             )
-        if type == "hist_vol":
+        if analysis == "tr_atr":
+            indicator2 = tr_atr.run_tr_atr(
+                tf_df_dict, from_bar=view_params, calc_args=analysis_params
+            )
+        if analysis == "hist_vol":
             indicator2 = historical_vol.run_historical_vol(
-                tf_df_dict, from_bar=parameter
+                tf_df_dict, from_bar=view_params, calc_args=analysis_params
             )
 
     else:
         tf = timeframe[0]
         if tf == "1d":
             indicator1 = bftb.run_btfd(tf_df_dict)
-            if type == "supertrend":
+            if analysis == "supertrend":
                 indicator2 = supertrend.run_supertrend(tf_df_dict)
-            if type == "bear_engulf":
+            if analysis == "bear_engulf":
                 indicator2 = engulfing_pattern.run_engulfing_pattern(
                     tf_df_dict, type="bear"
                 )
-            if type == "bull_engulf":
+            if analysis == "bull_engulf":
                 indicator2 = engulfing_pattern.run_engulfing_pattern(
                     tf_df_dict, type="bull"
                 )
             # all the other analysis need a tf spec
-            if type == "from_diff":
+            if analysis == "from_diff":
                 indicator2 = from_bar_diffs.run_from_bar_diffs(
-                    tf_df_dict, from_bar=parameter
+                    tf_df_dict, from_bar=view_params
                 )
-            if type == "price_diff":
-                indicator2 = prices_diff.run_prices_diff(tf_df_dict, last_nth=parameter)
-            if type == "tr_atr":
-                indicator2 = tr_atr.run_tr_atr(tf_df_dict, from_bar=parameter)
-            if type == "hist_vol":
+            if analysis == "price_diff":
+                indicator2 = prices_diff.run_prices_diff(
+                    tf_df_dict, last_nth=view_params
+                )
+            if analysis == "tr_atr":
+                indicator2 = tr_atr.run_tr_atr(
+                    tf_df_dict, from_bar=view_params, calc_args=analysis_params
+                )
+            if analysis == "hist_vol":
                 indicator2 = historical_vol.run_historical_vol(
-                    tf_df_dict, from_bar=parameter
+                    tf_df_dict, from_bar=view_params, calc_args=analysis_params
                 )
         else:
-            if type == "supertrend":
+            if analysis == "supertrend":
                 indicator1 = supertrend.run_supertrend(tf_df_dict)
-            if type == "bear_engulf":
+            if analysis == "bear_engulf":
                 indicator1 = engulfing_pattern.run_engulfing_pattern(
                     tf_df_dict, type="bear"
                 )
-            if type == "bull_engulf":
+            if analysis == "bull_engulf":
                 indicator1 = engulfing_pattern.run_engulfing_pattern(
                     tf_df_dict, type="bull"
                 )
             # all the other analysis need a tf spec
-            if type == "from_diff":
+            if analysis == "from_diff":
                 indicator1 = from_bar_diffs.run_from_bar_diffs(
-                    tf_df_dict, tf, from_bar=parameter
+                    tf_df_dict, tf, from_bar=view_params
                 )
-            if type == "price_diff":
+            if analysis == "price_diff":
                 indicator1 = prices_diff.run_prices_diff(
-                    tf_df_dict, tf, last_nth=parameter
+                    tf_df_dict, tf, last_nth=view_params
                 )
-            if type == "tr_atr":
+            if analysis == "tr_atr":
                 indicator1 = tr_atr.run_tr_atr(
-                    tf_df_dict, timeframe=tf, from_bar=parameter
+                    tf_df_dict,
+                    timeframe=tf,
+                    from_bar=view_params,
+                    calc_args=analysis_params,
                 )
-            if type == "hist_vol":
+            if analysis == "hist_vol":
                 indicator1 = historical_vol.run_historical_vol(
-                    tf_df_dict, timeframe=tf, from_bar=parameter
+                    tf_df_dict,
+                    timeframe=tf,
+                    from_bar=view_params,
+                    calc_args=analysis_params,
                 )
 
     indicator_results = {"indicator1": indicator1}
@@ -181,19 +195,27 @@ def run(symbol_timeframes_arr):
         tf_df_dict[timeframe] = df
 
     # use_analysis, use_timeframe, use_paramter  global vars per process
-    results = run_indicators(tf_df_dict, use_analysis, use_timeframe, use_parameter)
+    results = run_indicators(
+        tf_df_dict,
+        analysis=use_analysis,
+        timeframe=use_timeframe,
+        view_params=use_view_params,
+        analysis_params=use_analysis_params,
+    )
 
     return {"symbol": {"name": symbol}, **results}
 
 
-def pool_initializer(analysis, timeframe, parameter):
+def pool_initializer(analysis, timeframe, view_params, analysis_params):
     global use_analysis
     global use_timeframe
-    global use_parameter
+    global use_view_params
+    global use_analysis_params
 
     use_analysis = analysis
     use_timeframe = timeframe
-    use_parameter = parameter
+    use_view_params = view_params
+    use_analysis_params = analysis_params
 
 
 def main():
@@ -244,10 +266,17 @@ def main():
         ],
         help="Type of analysis",
     )
+    # this has to be view size options
     PARSER.add_argument(
-        "-p",
-        "--parameter",
-        help="Specify lookback window size (integer) for from_diff, price_diff, tr_atr and hist_vol analysis",
+        "-vp",
+        "--view-params",
+        help="View parameter for from_diff, price_diff, tr_atr and hist_vol analysis",
+    )
+    PARSER.add_argument(
+        "-ap",
+        "--analysis-params",
+        nargs="+",
+        help="Analysis params for tr_atr and hist_vol analysis. -ap param1_value1 param2_value2 etc",
     )
 
     parsed_arguments = PARSER.parse_args(sys.argv[1:])
@@ -275,8 +304,8 @@ def main():
             f"This analysis supports only 1 timeframe per run. Will use only {parsed_arguments.timeframe[0]}, the rest are ignored"
         )
 
-    parameter = 10
-    if parsed_arguments.parameter != None:
+    view_params = 10
+    if parsed_arguments.view_params != None:
         if (
             parsed_arguments.use_analysis != "from_diff"
             and parsed_arguments.use_analysis != "price_diff"
@@ -287,7 +316,7 @@ def main():
                 f"Only from_diff, price_diff, tr_atr, hist_vol support -p. Will run {parsed_arguments.use_analysis} with default arguments"
             )
         else:
-            parameter = int(parsed_arguments.parameter)
+            view_params = int(parsed_arguments.view_params)
 
     # Enable it for many
     pool = Pool(
@@ -296,7 +325,8 @@ def main():
         initargs=(
             parsed_arguments.use_analysis,
             parsed_arguments.timeframe,
-            parameter,
+            view_params,
+            parsed_arguments.analysis_params,
         ),
     )
     results = pool.map(run, symbol_tfs_arr)
@@ -346,7 +376,14 @@ def output(results, args):
 # {symbol: {name: ATOMUSDT}, indicator1: { name:'Supertrend', series: {1d: df},  screened: {1d: False, 12h: Buy}}, indicator2:{name:{}, series: {}, screened: {} } },
 # ]
 #
-def print_tabular(results, sort=None, analysis=None, timeframe=None):
+def print_tabular(
+    results,
+    sort=None,
+    analysis=None,
+    timeframe=None,
+    calculation_options=None,
+    last_n=None,
+):
     """
     Print results in a tabular format
     """

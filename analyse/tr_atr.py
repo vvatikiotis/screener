@@ -100,11 +100,18 @@ def tabulate(series, dict_screened, analysis=None, timeframe=None):
 
 
 #
-def run_tr_atr(tf_df_dict, timeframe="1d", from_bar=10, lookback=14):
+def run_tr_atr(tf_df_dict, timeframe="1d", from_bar=10, calc_args=None):
     """
     Calculates tr, atr and natr for given timeframe, printing from_bar number of
     candles back
     """
+
+    if calc_args == None:
+        lookback = 14
+    elif calc_args[0].split("_")[0] == "lookback":
+        lookback = int(calc_args[0].split("_")[1])
+    else:
+        lookback = 14
 
     # calculates atr starting from today and keeps the last 10 results
     def tr_atr(df, timeframe, from_bar):
@@ -132,8 +139,8 @@ def run_tr_atr(tf_df_dict, timeframe="1d", from_bar=10, lookback=14):
     # series MUST be a Dataframe
     # screened MUST be a dict
     return {
-        "name": f"TR, ATR and NATR now and last {from_bar} values, {timeframe}, lookback {lookback} candles",
-        "desc": f"tr_atr: see TR, ATR and NATR values, starting from {from_bar} previous candles.",
+        "name": f"TR, ATR and NATR now for the last {from_bar} bars, {timeframe}, lookback {lookback} bars.",
+        "desc": f"tr_atr: Showing last {from_bar} period of TR, ATR and NATR values, {timeframe}, lookback {lookback} periods",
         "series": series,
         "screened": screened,
         "output_id": OUTPUT_ID,

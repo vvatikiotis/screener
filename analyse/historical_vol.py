@@ -61,8 +61,18 @@ def tabulate(series, tf_screened, analysis=None, timeframe=None):
     return [headers, tf_screened]
 
 
-def run_historical_vol(tf_df_dict, rollback=21, timeframe="1d", from_bar=10):
-    #
+def run_historical_vol(tf_df_dict, timeframe="1d", from_bar=10, calc_args=None):
+    """
+    Calcualte historical volatility
+    """
+
+    if calc_args == None:
+        lookback = 21
+    elif calc_args[0].split("_")[0] == "lookback":
+        lookback = int(calc_args[0].split("_")[1])
+    else:
+        lookback = 21
+
     def calculate_historical_vol(tf_sources_dict):
         """
         We calculate historical vol based on the following
@@ -74,11 +84,9 @@ def run_historical_vol(tf_df_dict, rollback=21, timeframe="1d", from_bar=10):
         df["pct_change"] = np.log1p(df.close.pct_change())
         df_log_pct = df["pct_change"].iloc[1:]
 
-        vol = df_log_pct.rolling(rollback).std().dropna()
+        vol = df_log_pct.rolling(lookback).std().dropna()
 
         # calculate the mean of only last year
-        mean = df["close"].iloc[-rollback:].mean()
-
         annual = 365  # for crypto only
         per = (
             1
@@ -101,7 +109,11 @@ def run_historical_vol(tf_df_dict, rollback=21, timeframe="1d", from_bar=10):
 
         # This is Coefficiency of Variation
         # https://seekingalpha.com/article/4079870-coefficient-of-variation-better-metric-to-compare-volatility
-        series_dict[1] = 100 * vol.iloc[-1] / mean
+        # we calculate the standard deviation from close, nor from returns
+        # https://www.socscistatistics.com/descriptive/coefficientvariation/default.aspx
+        # series_dict[1] = 100 * vol.iloc[-1] / mean
+        mean = df["close"].iloc[-lookback:].mean()
+        series_dict[1] = 100 * df["close"].iloc[-lookback:].std() / mean
 
         return series_dict
 
@@ -109,8 +121,8 @@ def run_historical_vol(tf_df_dict, rollback=21, timeframe="1d", from_bar=10):
     series = pd.DataFrame({f"hist_vol_{timeframe}": screened})
 
     return {
-        "name": f"Historical Vol, last {from_bar-1} bars",
-        "desc": f"Historical Vol: showing last {from_bar-1} bars, rolling window: {rollback} bars. CV = Coefficient of Variation",
+        "name": f"Historical Vol, last {from_bar-1} periods, {lookback} periods historical volatility",
+        "desc": f"hist_vol: Showing last {from_bar} periods of historical volatility values, {timeframe}, lookback {lookback} periods, CV = Coefficient of Variation",
         "series": series,
         "screened": screened,
         "output_id": OUTPUT_ID,
